@@ -57,6 +57,20 @@
     .item.selected{background:#14213e;border-color:#3968c3}
     .detail{border:1px solid var(--line);border-radius:12px;background:#101525;padding:12px;min-height:170px;font-size:12px;line-height:1.6}
     .muted{color:var(--muted)}
+    .savePreview{margin:10px 0 2px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#0f1425;font-size:11px;line-height:1.55}
+    .savePreview b{color:var(--gold)}
+    .savePreview.hidden{display:none}
+    .chatPanel{position:fixed;left:14px;bottom:14px;width:320px;z-index:1400;background:rgba(7,10,18,.9);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px;backdrop-filter:blur(4px)}
+    .chatPanel.hidden{display:none}
+    .chatHead{font-size:11px;color:var(--gold);margin-bottom:6px}
+    .chatLog{height:118px;overflow:auto;background:#0d1221;border:1px solid var(--line);border-radius:10px;padding:8px;font-size:11px;line-height:1.5}
+    .chatLine{margin-bottom:5px;word-break:break-word}
+    .chatLine .name{color:#9fd0ff}
+    .chatLine.system{color:#9be7b5}
+    .chatInputRow{display:flex;gap:8px;margin-top:8px}
+    .chatInput{flex:1;padding:10px;border-radius:10px;border:1px solid var(--line);background:#101525;color:var(--txt);outline:none}
+    .miniBtn{padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:#18203a;color:var(--txt);font-weight:700;cursor:pointer}
+    .mBtn.skill{background:rgba(103,232,249,.18);border-color:rgba(103,232,249,.35);width:56px;height:56px;font-size:11px}
   </style>
 </head>
 <body>
@@ -80,8 +94,12 @@
         <input id="loginPw" class="input" type="password" placeholder="6文字以上" maxlength="64">
       </div>
       <div id="loginMsg" class="msg"></div>
+      <div id="localSavePreview" class="savePreview hidden"></div>
       <div class="btnRow">
         <button id="loginAction" class="btn primary">ログイン</button>
+      </div>
+      <div class="btnRow" style="margin-top:8px">
+        <button id="quickContinueBtn" class="btn">ローカルセーブから続き</button>
       </div>
       <div class="note">初回は新規登録 → キャラクター名を決定 → ゲーム開始。<br>保存はローカル + Supabase に行います。</div>
     </div>
@@ -141,15 +159,26 @@
 
   <div id="mobilePad"><div id="joyStick"></div></div>
   <div id="mobileButtons">
+    <div id="btnSkill1Mobile" class="mBtn skill">S1</div>
+    <div id="btnSkill2Mobile" class="mBtn skill">S2</div>
+    <div id="btnSkill3Mobile" class="mBtn skill">S3</div>
     <div id="btnBagMobile" class="mBtn bag">BAG</div>
     <div id="btnJumpMobile" class="mBtn jump">JUMP</div>
     <div id="btnAtkMobile" class="mBtn attack">ATK</div>
   </div>
+  <div id="chatPanel" class="chatPanel hidden">
+    <div class="chatHead">CHAT / SYSTEM LOG <span style="color:#7f87a4">(Tで入力)</span></div>
+    <div id="chatLog" class="chatLog"></div>
+    <div class="chatInputRow">
+      <input id="chatInput" class="chatInput" maxlength="80" placeholder="メッセージを入力">
+      <button id="chatSendBtn" class="miniBtn">送信</button>
+    </div>
+  </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
-    const SUPABASE_URL = 'https://asocakwtqqehouldjebc.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzb2Nha3d0cXFlaG91bGRqZWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTkyNzIsImV4cCI6MjA5MDY5NTI3Mn0.zhgfWXo3hM1s7PGurduN4NTNmjIJC7-V1j75Ytrz310';
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
 
     const CVS = document.getElementById('gameCanvas');
     const CTX = CVS.getContext('2d');
@@ -175,6 +204,13 @@
       noticeText:'',
       noticeOk:false,
       noticeUntil:0,
+      saveStateText:'',
+      saveStateOk:true,
+      saveStateUntil:0,
+      isSubmitting:false,
+      activeAuthTab:'login',
+      respawnQueue:[],
+      chatMessages:[],
       debugMsg:''
     };
 
@@ -185,12 +221,110 @@
       GS.mobile.jump = false;
       GS.mobile.attack = false;
     }
+    function setSaveStatus(text, ok=true, holdMs=2200){
+      GS.saveStateText = text || '';
+      GS.saveStateOk = !!ok;
+      GS.saveStateUntil = performance.now() + holdMs;
+    }
+    function setSubmitBusy(flag){
+      GS.isSubmitting = !!flag;
+      qs('loginAction').disabled = !!flag;
+      qs('createStartBtn').disabled = !!flag;
+    }
+    function focusLater(id){
+      setTimeout(()=>{ const el = qs(id); if(el) el.focus(); }, 30);
+    }
+    function switchAuthTab(mode){
+      GS.activeAuthTab = mode === 'register' ? 'register' : 'login';
+      const isLogin = GS.activeAuthTab === 'login';
+      qs('tabLogin').classList.toggle('active', isLogin);
+      qs('tabRegister').classList.toggle('active', !isLogin);
+      qs('loginAction').textContent = isLogin ? 'ログイン' : '新規登録';
+      qs('loginAction').onclick = isLogin ? doLogin : doRegister;
+      liMsg('');
+      focusLater('loginId');
+    }
+    function updateLocalSavePreview(){
+      const box = qs('localSavePreview');
+      const btn = qs('quickContinueBtn');
+      try{
+        const raw = localStorage.getItem('altera_mmo_save');
+        if(!raw){ box.classList.add('hidden'); btn.disabled = true; return; }
+        const s = JSON.parse(raw);
+        box.classList.remove('hidden');
+        btn.disabled = false;
+        box.innerHTML = `<b>ローカルセーブ</b><br>名前: ${s.name || '-'} / 職業: ${s.job || '-'}<br>LV ${s.level || 1} / MAP ${s.map_id || 'z01_m01'} / MESO ${s.meso || 0}`;
+      }catch(_){ box.classList.add('hidden'); btn.disabled = true; }
+    }
+    function quickContinueFromLocal(){
+      const raw = localStorage.getItem('altera_mmo_save');
+      if(!raw) return liMsg('ローカルセーブがありません。');
+      try{
+        applyPlayerData(JSON.parse(raw));
+        if(P.name) startGame(); else showCreateUI();
+        setSaveStatus('ローカルセーブから再開', true, 2200);
+      }catch(_){ liMsg('ローカルセーブの読み込みに失敗しました。'); }
+    }
+    function loadChatLocal(){
+      try{ GS.chatMessages = safeParseJSON(localStorage.getItem('altera_mmo_chat') || '[]', []); }catch(_){ GS.chatMessages = []; }
+      renderChatLog();
+    }
+    function saveChatLocal(){
+      localStorage.setItem('altera_mmo_chat', JSON.stringify(GS.chatMessages.slice(-20)));
+    }
+    function pushChatMessage(name, text, type='player'){
+      const line = { name, text, type, at: Date.now() };
+      GS.chatMessages.push(line);
+      GS.chatMessages = GS.chatMessages.slice(-20);
+      saveChatLocal();
+      renderChatLog();
+    }
+    function renderChatLog(){
+      const log = qs('chatLog');
+      if(!log) return;
+      log.innerHTML = GS.chatMessages.map(m => `<div class="chatLine ${m.type==='system'?'system':''}">${m.type==='system' ? 'SYSTEM' : `<span class="name">${m.name}</span>`}: ${m.text}</div>`).join('') || '<div class="chatLine system">SYSTEM: ようこそ ALTERA へ</div>';
+      log.scrollTop = log.scrollHeight;
+    }
+    function sendChat(){
+      const input = qs('chatInput');
+      const text = input.value.trim();
+      if(!text) return;
+      pushChatMessage(P.name || 'You', text, 'player');
+      input.value = '';
+    }
+    function updateGameplayPanels(){
+      const on = GS.scene === 'play';
+      qs('chatPanel').classList.toggle('hidden', !on);
+    }
 
     const JOB_PRESETS = {
       Novice:{max_hp:100,max_mp:30,atk:10,def:5},
       Warrior:{max_hp:130,max_mp:20,atk:14,def:7},
       Archer:{max_hp:95,max_mp:35,atk:13,def:4},
       Mage:{max_hp:85,max_mp:60,atk:15,def:3}
+    };
+
+    const SKILLS_BY_JOB = {
+      Novice:[
+        {id:'burst_hit',name:'Burst Hit',key:'1',mp:6,cd:1400,type:'front',power:1.6,range:96,color:'#ffe699'},
+        {id:'first_aid',name:'First Aid',key:'2',mp:8,cd:5000,type:'heal',heal:28,color:'#64df96'},
+        {id:'lucky_dash',name:'Lucky Dash',key:'3',mp:10,cd:3200,type:'dash',power:1.05,range:86,color:'#67e8f9'}
+      ],
+      Warrior:[
+        {id:'power_slash',name:'Power Slash',key:'1',mp:8,cd:1300,type:'front',power:2.0,range:120,color:'#ff9b6b'},
+        {id:'guard_up',name:'Guard Up',key:'2',mp:10,cd:6000,type:'buff_def',amount:5,duration:5000,color:'#8cd3ff'},
+        {id:'charge',name:'Charge',key:'3',mp:12,cd:3800,type:'dash',power:1.35,range:110,color:'#ffd56b'}
+      ],
+      Archer:[
+        {id:'double_shot',name:'Double Shot',key:'1',mp:9,cd:1100,type:'multi_front',hits:2,power:1.18,range:180,color:'#9fd0ff'},
+        {id:'quick_step',name:'Quick Step',key:'2',mp:8,cd:4200,type:'buff_speed',amount:1.15,duration:4500,color:'#7ee7d3'},
+        {id:'pierce',name:'Pierce',key:'3',mp:12,cd:3500,type:'front',power:1.85,range:210,color:'#b8c7ff'}
+      ],
+      Mage:[
+        {id:'fire_orb',name:'Fire Orb',key:'1',mp:12,cd:1500,type:'front',power:1.95,range:150,color:'#ff8f59'},
+        {id:'meditate',name:'Meditate',key:'2',mp:0,cd:5200,type:'mp_restore',restore:24,color:'#9ef7ff'},
+        {id:'frost_nova',name:'Frost Nova',key:'3',mp:18,cd:4200,type:'burst',power:1.55,range:120,color:'#a7d9ff'}
+      ]
     };
 
     const ITEM_DATA = {
@@ -250,7 +384,9 @@
       reborn_count:0,
       inventory:[{itemId:'rusty_sword',qty:1},{itemId:'red_potion',qty:3}],
       equipped:{weapon:null,head:null,body:null,accessory:null},
-      attackCd:0,invuln:0,attackFlash:0
+      attackCd:0,invuln:0,attackFlash:0,
+      skillCooldowns:{},
+      buffs:{atkUntil:0,defUntil:0,speedUntil:0,atkAmount:0,defAmount:0,speedFactor:1}
     };
 
     let currentMap = null;
@@ -309,10 +445,13 @@
       P.equipped = normalizeEquipped(typeof d.equipped==='string' ? safeParseJSON(d.equipped||'{}', {}) : d.equipped);
       if(P.inventory.length===0) P.inventory=[{itemId:'rusty_sword',qty:1},{itemId:'red_potion',qty:3}];
       P.vx=0; P.vy=0; P.onGround=false; P.attackCd=0; P.invuln=0; P.attackFlash=0;
+      P.skillCooldowns = {};
+      P.buffs = {atkUntil:0,defUntil:0,speedUntil:0,atkAmount:0,defAmount:0,speedFactor:1};
     }
 
     function savePlayerToLocal(){
       localStorage.setItem('altera_mmo_save', JSON.stringify(localSaveData()));
+      updateLocalSavePreview();
     }
     function loadPlayerFromLocal(){
       try{
@@ -338,8 +477,18 @@
         return a;
       },{atk:0,def:0,maxHp:0,maxMp:0});
     }
-    function getTotalAtk(){ return P.atk + getEquipBonus().atk; }
-    function getTotalDef(){ return P.def + getEquipBonus().def; }
+    function getActiveSkills(){ return SKILLS_BY_JOB[P.job] || SKILLS_BY_JOB.Novice; }
+    function skillCooldownLeft(skill){ return Math.max(0, Math.ceil(((P.skillCooldowns[skill.id] || 0) - performance.now()) / 1000)); }
+    function getBuffBonus(){
+      const now = performance.now();
+      return {
+        atk: now < (P.buffs.atkUntil || 0) ? (P.buffs.atkAmount || 0) : 0,
+        def: now < (P.buffs.defUntil || 0) ? (P.buffs.defAmount || 0) : 0,
+        speed: now < (P.buffs.speedUntil || 0) ? (P.buffs.speedFactor || 1) : 1
+      };
+    }
+    function getTotalAtk(){ return P.atk + getEquipBonus().atk + getBuffBonus().atk; }
+    function getTotalDef(){ return P.def + getEquipBonus().def + getBuffBonus().def; }
     function getTotalMaxHp(){ return P.max_hp + getEquipBonus().maxHp; }
     function getTotalMaxMp(){ return P.max_mp + getEquipBonus().maxMp; }
 
@@ -412,7 +561,7 @@
       ids.forEach(id=>{ const el=qs(id); if(el){ el.textContent=t||''; el.className='msg'+(ok?' ok':''); } });
       GS.noticeText = t || '';
       GS.noticeOk = !!ok;
-      GS.noticeUntil = performance.now() + 2400;
+      GS.noticeUntil = performance.now() + (t ? 2400 : 0);
       setTimeout(()=>{ ids.forEach(id=>{ const el=qs(id); if(el && el.textContent===t) el.textContent=''; }); }, 2400);
     }
 
@@ -447,6 +596,8 @@
     }
 
     async function doRegister(){
+      if(GS.isSubmitting) return;
+      setSubmitBusy(true);
       try{
         const loginId = qs('loginId').value.trim();
         const pw = qs('loginPw').value;
@@ -474,15 +625,20 @@
         P.inventory = [{itemId:'rusty_sword',qty:1},{itemId:'red_potion',qty:3}];
         P.equipped = {weapon:null,head:null,body:null,accessory:null};
         savePlayerToLocal();
+        setSaveStatus('新規登録準備OK', true, 1800);
         hideLoginUI();
         showCreateUI();
       }catch(err){
         console.error(err);
         liMsg('サーバーに接続できません');
+      }finally{
+        setSubmitBusy(false);
       }
     }
 
     async function doLogin(){
+      if(GS.isSubmitting) return;
+      setSubmitBusy(true);
       try{
         const loginId = qs('loginId').value.trim();
         const pw = qs('loginPw').value;
@@ -492,20 +648,26 @@
         if(!data) return liMsg('IDまたはパスワードが違います。');
         const client = await initSB();
         await client.from('mmo_players').update({ last_login_at:new Date().toISOString() }).eq('id', P.id);
+        setSaveStatus('ログイン成功', true, 1800);
         hideLoginUI();
         if(!P.name) showCreateUI();
         else startGame();
       }catch(err){
         console.error(err);
         liMsg('サーバーに接続できません');
+      }finally{
+        setSubmitBusy(false);
       }
     }
 
     async function finalizeCharacterCreate(){
+      if(GS.isSubmitting) return;
+      setSubmitBusy(true);
       try{
         const name = qs('charName').value.trim();
         const job = qs('charJob').value || 'Novice';
         if(name.length < 2 || name.length > 12) return liMsg('名前は2〜12文字です。');
+        if(!/^[^\s].{0,10}[^\s]$|^[^\s]{1,12}$/.test(name)) return liMsg('名前の先頭と末尾に空白は使えません。');
         P.name = name;
         P.job = job;
         const preset = JOB_PRESETS[job] || JOB_PRESETS.Novice;
@@ -513,11 +675,14 @@
         P.max_mp = preset.max_mp; P.mp = preset.max_mp;
         P.atk = preset.atk; P.def = preset.def;
         await savePlayer(true);
+        setSaveStatus('キャラクター作成完了', true, 2200);
         hideCreateUI();
         startGame();
       }catch(err){
         console.error(err);
         liMsg('キャラクター作成に失敗しました。');
+      }finally{
+        setSubmitBusy(false);
       }
     }
 
@@ -539,9 +704,11 @@
         };
         const { error } = await client.from('mmo_players').upsert(payload);
         if(error) throw error;
+        setSaveStatus(force ? 'セーブ完了' : '自動保存完了', true, 1600);
         if(force) await savePresence(true);
       }catch(err){
         console.warn('savePlayer failed', err);
+        setSaveStatus('オンライン保存失敗 / ローカル保存は完了', false, 2600);
       }
     }
 
@@ -569,9 +736,9 @@
       }catch(e){ GS.others=[]; }
     }
 
-    function showLoginUI(){ clearGameplayInputs(); qs('loginOverlay').classList.remove('hidden'); GS.scene='login'; }
+    function showLoginUI(){ clearGameplayInputs(); qs('loginOverlay').classList.remove('hidden'); GS.scene='login'; updateGameplayPanels(); switchAuthTab(GS.activeAuthTab || 'login'); updateLocalSavePreview(); }
     function hideLoginUI(){ qs('loginOverlay').classList.add('hidden'); }
-    function showCreateUI(){ clearGameplayInputs(); qs('createOverlay').classList.remove('hidden'); GS.scene='create'; }
+    function showCreateUI(){ clearGameplayInputs(); qs('createOverlay').classList.remove('hidden'); GS.scene='create'; updateGameplayPanels(); focusLater('charName'); }
     function hideCreateUI(){ qs('createOverlay').classList.add('hidden'); }
     function isTypingTarget(el){
       if(!el) return false;
@@ -645,6 +812,7 @@
       monsters = currentMap.monsters.map(m=>createMonster(m.kind,m.x,m.y));
       GS.worldDrops = [];
       loadOthers();
+      pushChatMessage('SYSTEM', `${currentMap.name} に入りました。`, 'system');
     }
 
     function startGame(){
@@ -653,6 +821,7 @@
       hideInventoryUI();
       loadMap(P.map_id || 'z01_m01', P.pos_x, P.pos_y);
       GS.scene='play';
+      updateGameplayPanels();
       savePlayer(true);
     }
 
@@ -701,6 +870,9 @@
       P.meso += irand(2, 8 + Math.max(1, mon.exp));
     }
 
+    function scheduleRespawn(mon){
+      GS.respawnQueue.push({mapId:P.map_id,kind:mon.kind,x:mon.x,y:mon.baseY ?? mon.y,at:performance.now() + irand(7000, 13000)});
+    }
     function giveExp(v){
       P.exp += v;
       while(P.exp >= expToNext(P.level)){
@@ -713,6 +885,23 @@
         P.hp = getTotalMaxHp();
         P.mp = getTotalMaxMp();
         spawnHitText(P.pos_x + 8, P.pos_y - 18, `LEVEL UP! ${P.level}`, '#ffcf4d');
+        pushChatMessage('SYSTEM', `${P.name || 'Player'} が Lv.${P.level} になりました。`, 'system');
+        savePlayer();
+      }
+    }
+
+    function hitMonster(mon, dmg, color='#fff'){
+      mon.hp -= dmg;
+      mon.hitCd = 6;
+      mon.vx += P.facing * 1.8;
+      spawnHitText(mon.x + mon.w*.5, mon.y - 8, `-${dmg}`, color);
+      if(mon.hp <= 0){
+        mon.dead = true;
+        giveExp(mon.exp);
+        rollMonsterDrops(mon);
+        scheduleRespawn(mon);
+        spawnHitText(mon.x + mon.w*.5, mon.y - 20, `+${mon.exp} EXP`, '#67e8f9');
+        pushChatMessage('SYSTEM', `${mon.kind.toUpperCase()} を倒した。`, 'system');
         savePlayer();
       }
     }
@@ -727,6 +916,7 @@
         P.hp = Math.max(1, Math.floor(getTotalMaxHp() * .4));
         P.mp = Math.max(0, Math.floor(getTotalMaxMp() * .4));
         const safe = MAPS.z01_m01;
+        pushChatMessage('SYSTEM', '力尽きたため草原の入口に戻されました。', 'system');
         loadMap(safe.id, 160, 390);
         savePlayer();
       }
@@ -743,19 +933,69 @@
         if(mon.dead) return;
         if(hitBox.x + hitBox.w > mon.x && hitBox.x < mon.x + mon.w && hitBox.y + hitBox.h > mon.y && hitBox.y < mon.y + mon.h){
           const dmg = Math.max(1, Math.round(getTotalAtk() - mon.def + rand(0,5)));
-          mon.hp -= dmg;
-          mon.hitCd = 6;
-          mon.vx += P.facing * 1.8;
-          spawnHitText(mon.x + mon.w*.5, mon.y - 8, `-${dmg}`, '#fff');
-          if(mon.hp <= 0){
-            mon.dead = true;
-            giveExp(mon.exp);
-            rollMonsterDrops(mon);
-            spawnHitText(mon.x + mon.w*.5, mon.y - 20, `+${mon.exp} EXP`, '#67e8f9');
-            savePlayer();
-          }
+          hitMonster(mon, dmg, '#fff');
         }
       });
+      monsters = monsters.filter(m=>!m.dead);
+    }
+
+    function useSkillSlot(index){
+      if(GS.scene !== 'play' || GS.inventoryOpen) return;
+      const skill = getActiveSkills()[index];
+      if(!skill) return;
+      if((P.skillCooldowns[skill.id] || 0) > performance.now()) return liMsg(`${skill.name} はクールダウン中です。`);
+      if(P.mp < skill.mp) return liMsg('MPが足りません。');
+      P.mp = clamp(P.mp - skill.mp, 0, getTotalMaxMp());
+      P.skillCooldowns[skill.id] = performance.now() + skill.cd;
+      P.attackFlash = 7;
+      const frontX = P.facing > 0 ? P.pos_x + P.w : P.pos_x - (skill.range || 100);
+      const hitRange = {x:frontX, y:P.pos_y - 8, w:skill.range || 100, h:P.h + 18};
+      if(skill.type === 'front' || skill.type === 'multi_front'){
+        monsters.forEach(mon=>{
+          if(mon.dead) return;
+          if(hitRange.x + hitRange.w > mon.x && hitRange.x < mon.x + mon.w && hitRange.y + hitRange.h > mon.y && hitRange.y < mon.y + mon.h){
+            const hits = skill.type === 'multi_front' ? (skill.hits || 2) : 1;
+            for(let i=0;i<hits;i++){
+              const dmg = Math.max(1, Math.round(getTotalAtk() * skill.power - mon.def + rand(0,4)));
+              hitMonster(mon, dmg, skill.color || '#fff');
+              if(mon.dead) break;
+            }
+          }
+        });
+      } else if(skill.type === 'heal') {
+        P.hp = clamp(P.hp + (skill.heal || 0), 0, getTotalMaxHp());
+        spawnHitText(P.pos_x + P.w*.5, P.pos_y - 18, `+${skill.heal} HP`, '#64df96');
+      } else if(skill.type === 'mp_restore') {
+        P.mp = clamp(P.mp + (skill.restore || 0), 0, getTotalMaxMp());
+        spawnHitText(P.pos_x + P.w*.5, P.pos_y - 18, `+${skill.restore} MP`, '#9ef7ff');
+      } else if(skill.type === 'dash') {
+        P.pos_x = clamp(P.pos_x + P.facing * (skill.range || 80), 0, currentMap.width - P.w);
+        monsters.forEach(mon=>{
+          if(mon.dead) return;
+          if(Math.abs((mon.x + mon.w*.5) - (P.pos_x + P.w*.5)) < 68 && Math.abs(mon.y - P.pos_y) < 70){
+            const dmg = Math.max(1, Math.round(getTotalAtk() * (skill.power || 1.1) - mon.def + rand(0,4)));
+            hitMonster(mon, dmg, skill.color || '#fff');
+          }
+        });
+      } else if(skill.type === 'buff_def') {
+        P.buffs.defAmount = skill.amount || 0;
+        P.buffs.defUntil = performance.now() + (skill.duration || 3000);
+        spawnHitText(P.pos_x + P.w*.5, P.pos_y - 18, 'DEF UP', '#8cd3ff');
+      } else if(skill.type === 'buff_speed') {
+        P.buffs.speedFactor = skill.amount || 1.1;
+        P.buffs.speedUntil = performance.now() + (skill.duration || 3000);
+        spawnHitText(P.pos_x + P.w*.5, P.pos_y - 18, 'SPD UP', '#7ee7d3');
+      } else if(skill.type === 'burst') {
+        monsters.forEach(mon=>{
+          if(mon.dead) return;
+          if(Math.abs((mon.x + mon.w*.5) - (P.pos_x + P.w*.5)) < (skill.range || 90) && Math.abs((mon.y + mon.h*.5) - (P.pos_y + P.h*.5)) < (skill.range || 90)){
+            const dmg = Math.max(1, Math.round(getTotalAtk() * skill.power - mon.def + rand(0,4)));
+            hitMonster(mon, dmg, skill.color || '#fff');
+          }
+        });
+      }
+      liMsg(`${skill.name} 発動`, true);
+      savePlayer();
       monsters = monsters.filter(m=>!m.dead);
     }
 
@@ -763,6 +1003,7 @@
       for(const po of currentMap.portals){
         if(P.pos_x + P.w > po.x && P.pos_x < po.x + po.w && P.pos_y + P.h > po.y && P.pos_y < po.y + po.h){
           loadMap(po.to, po.tx, po.ty);
+          pushChatMessage('SYSTEM', `${MAPS[po.to]?.name || po.to} に移動しました。`, 'system');
           savePlayer(true);
           break;
         }
@@ -777,7 +1018,8 @@
       if(left) move -= 1;
       if(right) move += 1;
       if(move !== 0) P.facing = move;
-      const target = move * 3.3;
+      const moveSpeed = 3.3 * getBuffBonus().speed;
+      const target = move * moveSpeed;
       P.vx += (target - P.vx) * 0.22;
       if(Math.abs(P.vx) < .03) P.vx = 0;
       if(wantJump && P.onGround){ P.vy = -9.3; P.onGround=false; }
@@ -789,7 +1031,7 @@
       resolvePlayerPlatforms();
       tryPortal();
       P.hp = clamp(P.hp, 0, getTotalMaxHp());
-      P.mp = clamp(P.mp, 0, getTotalMaxMp());
+      P.mp = clamp(P.mp + 0.01, 0, getTotalMaxMp());
       if(P.attackCd > 0) P.attackCd--;
       if(P.invuln > 0) P.invuln--;
       if(P.attackFlash > 0) P.attackFlash--;
@@ -815,6 +1057,17 @@
       });
     }
 
+    function updateRespawns(){
+      const now = performance.now();
+      const keep = [];
+      for(const r of GS.respawnQueue){
+        if(r.at > now || r.mapId !== P.map_id){ keep.push(r); continue; }
+        monsters.push(createMonster(r.kind, r.x, r.y));
+        pushChatMessage('SYSTEM', `${r.kind.toUpperCase()} が再出現した。`, 'system');
+      }
+      GS.respawnQueue = keep;
+    }
+
     function updateWorldDrops(){
       for(const d of GS.worldDrops){
         d.vy += .24;
@@ -825,6 +1078,7 @@
         if(P.pos_x + P.w > d.x - 12 && P.pos_x < d.x + 12 && P.pos_y + P.h > d.y - 18 && P.pos_y < d.y + 18){
           addItemToInventory(d.itemId, d.qty || 1);
           spawnHitText(d.x, d.y - 6, `GET ${ITEM_DATA[d.itemId]?.name || d.itemId}`, '#64df96');
+          pushChatMessage('SYSTEM', `${ITEM_DATA[d.itemId]?.name || d.itemId} を拾った。`, 'system');
           d.life = 0;
         }
       }
@@ -837,6 +1091,7 @@
     }
 
     function updateAutosave(ts){
+      updateRespawns();
       if(ts - GS.lastSave > 15000 && GS.scene === 'play'){
         GS.lastSave = ts;
         savePlayer();
@@ -936,11 +1191,18 @@
       drawRect(330,62,240,10,'rgba(0,0,0,.45)');
       drawRect(330,62,240*(P.exp/expToNext(P.level)),10,'#64df96');
       drawText(`EXP ${P.exp} / ${expToNext(P.level)}`, 450, 71, '#0b1410', '10px monospace', 'center');
-      drawRect(730,14,216,76,'rgba(10,13,24,.66)');
-      CTX.strokeStyle='rgba(255,255,255,.1)'; CTX.strokeRect(730,14,216,76);
-      drawText('操作', 742, 34, '#67e8f9', 'bold 12px monospace');
-      drawText('移動:A/D or ←→  ジャンプ:W/↑/Space', 742, 52, '#fff', '10px monospace');
-      drawText('攻撃:J  インベントリ:I  ポータル接触で移動', 742, 68, '#fff', '10px monospace');
+      drawRect(690,14,256,108,'rgba(10,13,24,.66)');
+      CTX.strokeStyle='rgba(255,255,255,.1)'; CTX.strokeRect(690,14,256,108);
+      drawText('操作 / スキル', 702, 34, '#67e8f9', 'bold 12px monospace');
+      drawText('移動:A/D or ←→  ジャンプ:W/↑/Space', 702, 52, '#fff', '10px monospace');
+      drawText('攻撃:J  インベントリ:I  ESCで閉じる', 702, 68, '#fff', '10px monospace');
+      const skills = getActiveSkills();
+      drawText(`1:${skills[0]?.name||'-'}  2:${skills[1]?.name||'-'}  3:${skills[2]?.name||'-'}`, 702, 84, '#fff', '10px monospace');
+      const cds = skills.map(s=> s ? `${s.key}:${skillCooldownLeft(s) || 'OK'}` : '').join('  ');
+      drawText(cds, 702, 100, '#d9def2', '10px monospace');
+      if(GS.saveStateText && performance.now() < GS.saveStateUntil){
+        drawText(GS.saveStateText, 702, 116, GS.saveStateOk ? '#64df96' : '#ff9aa4', '10px monospace');
+      }
       if(GS.noticeText && performance.now() < GS.noticeUntil){
         drawRect(240, 500, 480, 24, GS.noticeOk ? 'rgba(28,90,54,.88)' : 'rgba(110,44,56,.88)');
         CTX.strokeStyle = GS.noticeOk ? 'rgba(100,223,150,.55)' : 'rgba(255,107,120,.55)';
@@ -1002,17 +1264,34 @@
     }
 
     window.addEventListener('keydown', e=>{
+      if(e.code === 'Escape' && GS.inventoryOpen){ e.preventDefault(); hideInventoryUI(); return; }
+      if(e.code === 'Enter' && !e.isComposing && isTypingTarget(e.target)){
+        if(e.target === qs('chatInput')){ e.preventDefault(); return sendChat(); }
+        if(GS.scene === 'login'){ e.preventDefault(); return GS.activeAuthTab === 'register' ? doRegister() : doLogin(); }
+        if(GS.scene === 'create'){ e.preventDefault(); return finalizeCharacterCreate(); }
+      }
       if(isTypingTarget(e.target) || isFormInteractionMode()) return;
+      if(GS.inventoryOpen){
+        if(e.code === 'ArrowUp'){ e.preventDefault(); GS.selectedInvIndex = clamp(GS.selectedInvIndex - 1, 0, Math.max(0, P.inventory.length - 1)); renderInventoryUI(); return; }
+        if(e.code === 'ArrowDown'){ e.preventDefault(); GS.selectedInvIndex = clamp(GS.selectedInvIndex + 1, 0, Math.max(0, P.inventory.length - 1)); renderInventoryUI(); return; }
+        if(e.code === 'Enter'){ e.preventDefault(); const entry = P.inventory[GS.selectedInvIndex]; const item = entry && ITEM_DATA[entry.itemId]; if(item){ const slot = slotForType(item.type); if(slot) equipItemByIndex(GS.selectedInvIndex); else if(item.type === 'consumable') useItemByIndex(GS.selectedInvIndex); } return; }
+      }
       GS.keys[e.code] = true;
       if(GS.scene !== 'play') return;
+      if(e.code === 'KeyT'){ e.preventDefault(); focusLater('chatInput'); return; }
+      if(e.code === 'Digit1'){ e.preventDefault(); useSkillSlot(0); return; }
+      if(e.code === 'Digit2'){ e.preventDefault(); useSkillSlot(1); return; }
+      if(e.code === 'Digit3'){ e.preventDefault(); useSkillSlot(2); return; }
       if(e.code === 'KeyJ'){ e.preventDefault(); basicAttack(); }
       if(e.code === 'KeyI'){ e.preventDefault(); toggleInventoryUI(); }
     });
     window.addEventListener('keyup', e=>{ if(isTypingTarget(e.target) || isFormInteractionMode()) return; GS.keys[e.code] = false; if(e.code==='Space') GS.mobile.jump=false; });
 
-    qs('tabLogin').onclick = ()=>{ qs('tabLogin').classList.add('active'); qs('tabRegister').classList.remove('active'); qs('loginAction').textContent='ログイン'; qs('loginAction').onclick=doLogin; };
-    qs('tabRegister').onclick = ()=>{ qs('tabRegister').classList.add('active'); qs('tabLogin').classList.remove('active'); qs('loginAction').textContent='新規登録'; qs('loginAction').onclick=doRegister; };
+    qs('tabLogin').onclick = ()=> switchAuthTab('login');
+    qs('tabRegister').onclick = ()=> switchAuthTab('register');
     qs('loginAction').onclick = doLogin;
+    qs('quickContinueBtn').onclick = quickContinueFromLocal;
+    qs('chatSendBtn').onclick = sendChat;
     qs('createStartBtn').onclick = finalizeCharacterCreate;
     qs('btnCloseInv').onclick = hideInventoryUI;
     qs('btnEquip').onclick = ()=> equipItemByIndex(GS.selectedInvIndex);
@@ -1046,6 +1325,9 @@
     qs('btnJumpMobile').addEventListener('pointerdown', e=>{ e.preventDefault(); GS.mobile.jump = true; setTimeout(()=>GS.mobile.jump=false,120); });
     qs('btnAtkMobile').addEventListener('pointerdown', e=>{ e.preventDefault(); basicAttack(); });
     qs('btnBagMobile').addEventListener('pointerdown', e=>{ e.preventDefault(); toggleInventoryUI(); });
+    qs('btnSkill1Mobile').addEventListener('pointerdown', e=>{ e.preventDefault(); useSkillSlot(0); });
+    qs('btnSkill2Mobile').addEventListener('pointerdown', e=>{ e.preventDefault(); useSkillSlot(1); });
+    qs('btnSkill3Mobile').addEventListener('pointerdown', e=>{ e.preventDefault(); useSkillSlot(2); });
 
     window.addEventListener('beforeunload', ()=>{ savePlayerToLocal(); clearPresence(); });
     window.addEventListener('resize', resizeCanvas);
@@ -1056,13 +1338,14 @@
     async function boot(){
       resizeCanvas();
       initMobileUI();
+      loadChatLocal();
       try{ await initSB(); }catch(err){ console.warn(err); }
       loadPlayerFromLocal();
+      switchAuthTab('login');
+      updateLocalSavePreview();
+      updateGameplayPanels();
       if(P.login_id) qs('loginId').value = P.login_id;
-      if(P.login_id && P.password_hash && P.name){
-        startGame();
-        liMsg('ローカルセーブを読み込みました。', true);
-      }else if(P.login_id && P.password_hash && !P.name){
+      if(P.login_id && P.password_hash && !P.name){
         showCreateUI();
       }else{
         showLoginUI();
