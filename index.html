@@ -276,14 +276,14 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
   <script>
     // =========================================================
-    // ALTERA MMO MVP - Single File
+    // ALTERA MMO MVP - with Drops / Inventory / Equipment
     // =========================================================
 
     // -----------------------------------------
     // Supabase - 自分の値に置き換えてください
     // -----------------------------------------
-    const SUPABASE_URL = 'https://asocakwtqqehouldjebc.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzb2Nha3d0cXFlaG91bGRqZWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTkyNzIsImV4cCI6MjA5MDY5NTI3Mn0.zhgfWXo3hM1s7PGurduN4NTNmjIJC7-V1j75Ytrz310';
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
     let sb = null;
 
     function initSB() {
@@ -351,6 +351,18 @@
     };
 
     window.addEventListener('keydown', (e) => {
+      if (e.code === 'KeyI' && GS.scene === 'play') {
+        e.preventDefault();
+        toggleInventoryUI();
+        return;
+      }
+
+      if (e.code === 'Escape' && GS.inventoryOpen) {
+        e.preventDefault();
+        hideInventoryUI();
+        return;
+      }
+
       KEY[e.code] = true;
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) {
         e.preventDefault();
@@ -377,6 +389,8 @@
       })),
       hitTexts:[],
       mobileInited:false,
+      inventoryOpen:false,
+      selectedInvIndex:0,
     };
 
     const P = {
@@ -410,7 +424,12 @@
       attackFlash:0,
       rebornCount:0,
       inventory:[],
-      equipped:{},
+      equipped:{
+        weapon:null,
+        head:null,
+        body:null,
+        accessory:null
+      },
       _pendingLogin:null,
     };
 
@@ -454,6 +473,64 @@
         h:20,
         color:'#8e7cff'
       }
+    };
+
+    const ITEM_DATA = {
+      rusty_sword:{
+        id:'rusty_sword',
+        name:'Rusty Sword',
+        type:'weapon',
+        rarity:'common',
+        stats:{ atk:3 },
+        value:25
+      },
+      novice_cap:{
+        id:'novice_cap',
+        name:'Novice Cap',
+        type:'head',
+        rarity:'common',
+        stats:{ def:2 },
+        value:20
+      },
+      leather_vest:{
+        id:'leather_vest',
+        name:'Leather Vest',
+        type:'body',
+        rarity:'common',
+        stats:{ def:3, maxHp:10 },
+        value:35
+      },
+      green_charm:{
+        id:'green_charm',
+        name:'Green Charm',
+        type:'accessory',
+        rarity:'rare',
+        stats:{ maxMp:8 },
+        value:50
+      },
+      red_potion:{
+        id:'red_potion',
+        name:'Red Potion',
+        type:'consumable',
+        rarity:'common',
+        healHp:30,
+        value:10
+      }
+    };
+
+    const DROP_TABLE = {
+      slime:[
+        { itemId:'red_potion', chance:0.35, min:1, max:1 },
+        { itemId:'novice_cap', chance:0.08, min:1, max:1 }
+      ],
+      shroom:[
+        { itemId:'red_potion', chance:0.45, min:1, max:2 },
+        { itemId:'leather_vest', chance:0.10, min:1, max:1 }
+      ],
+      bat:[
+        { itemId:'red_potion', chance:0.50, min:1, max:2 },
+        { itemId:'green_charm', chance:0.07, min:1, max:1 }
+      ]
     };
 
     const MAPS = {
@@ -542,6 +619,7 @@
     };
 
     let MONSTERS = [];
+    let WORLD_DROPS = [];
 
     // -----------------------------------------
     // Utility
@@ -576,6 +654,81 @@
       catch { return fallback; }
     }
 
+    function normalizeEquipped(equipped) {
+      return {
+        weapon: equipped?.weapon || null,
+        head: equipped?.head || null,
+        body: equipped?.body || null,
+        accessory: equipped?.accessory || null
+      };
+    }
+
+    function getEquippedItems() {
+      P.equipped = normalizeEquipped(P.equipped);
+      return Object.values(P.equipped)
+        .map(id => id ? ITEM_DATA[id] : null)
+        .filter(Boolean);
+    }
+
+    function getEquipBonus() {
+      const bonus = { atk:0, def:0, maxHp:0, maxMp:0 };
+      for (const item of getEquippedItems()) {
+        const s = item.stats || {};
+        bonus.atk += s.atk || 0;
+        bonus.def += s.def || 0;
+        bonus.maxHp += s.maxHp || 0;
+        bonus.maxMp += s.maxMp || 0;
+      }
+      return bonus;
+    }
+
+    function getTotalAtk() {
+      return (P.atk || 0) + getEquipBonus().atk;
+    }
+
+    function getTotalDef() {
+      return (P.def || 0) + getEquipBonus().def;
+    }
+
+    function getTotalMaxHp() {
+      return (P.maxHp || 0) + getEquipBonus().maxHp;
+    }
+
+    function getTotalMaxMp() {
+      return (P.maxMp || 0) + getEquipBonus().maxMp;
+    }
+
+    function addItemToInventoryNoSave(itemId, qty = 1) {
+      const found = P.inventory.find(v => v.itemId === itemId);
+      if (found) found.qty += qty;
+      else P.inventory.push({ itemId, qty });
+    }
+
+    function removeItemFromInventoryNoSave(itemId, qty = 1) {
+      const idx = P.inventory.findIndex(v => v.itemId === itemId);
+      if (idx < 0) return false;
+      P.inventory[idx].qty -= qty;
+      if (P.inventory[idx].qty <= 0) P.inventory.splice(idx, 1);
+      return true;
+    }
+
+    function addItemToInventory(itemId, qty = 1) {
+      addItemToInventoryNoSave(itemId, qty);
+      savePlayer();
+    }
+
+    function removeItemFromInventory(itemId, qty = 1) {
+      const ok = removeItemFromInventoryNoSave(itemId, qty);
+      if (ok) savePlayer();
+      return ok;
+    }
+
+    function getItemRarityColor(rarity) {
+      if (rarity === 'rare') return '#68c4ff';
+      if (rarity === 'epic') return '#b37cff';
+      return '#d6d9e8';
+    }
+
     // -----------------------------------------
     // Local Save
     // -----------------------------------------
@@ -599,7 +752,7 @@
       localStorage.setItem('altera_y', String(P.y ?? 400));
       localStorage.setItem('altera_reborn', String(P.rebornCount || 0));
       localStorage.setItem('altera_inventory', JSON.stringify(P.inventory || []));
-      localStorage.setItem('altera_equipped', JSON.stringify(P.equipped || {}));
+      localStorage.setItem('altera_equipped', JSON.stringify(normalizeEquipped(P.equipped)));
     }
 
     function loadPlayerFromLocal() {
@@ -622,7 +775,7 @@
       P.y = parseInt(localStorage.getItem('altera_y') || '400', 10);
       P.rebornCount = parseInt(localStorage.getItem('altera_reborn') || '0', 10);
       P.inventory = safeJsonParse(localStorage.getItem('altera_inventory') || '[]', []);
-      P.equipped = safeJsonParse(localStorage.getItem('altera_equipped') || '{}', {});
+      P.equipped = normalizeEquipped(safeJsonParse(localStorage.getItem('altera_equipped') || '{}', {}));
     }
 
     async function sha256(str) {
@@ -845,8 +998,16 @@
       P.mapId = 'z01_m01';
       P.x = 200;
       P.y = 400;
-      P.inventory = [];
-      P.equipped = {};
+      P.inventory = [
+        { itemId:'rusty_sword', qty:1 },
+        { itemId:'red_potion', qty:3 }
+      ];
+      P.equipped = {
+        weapon:null,
+        head:null,
+        body:null,
+        accessory:null
+      };
       P.rebornCount = 0;
 
       await savePlayer();
@@ -855,6 +1016,245 @@
       GS.scene = 'play';
       initMobileUI();
       loadMap(P.mapId, P.x, P.y);
+    }
+
+    // -----------------------------------------
+    // Inventory UI
+    // -----------------------------------------
+    let inventoryEl = null;
+
+    function hideInventoryUI() {
+      inventoryEl?.remove();
+      inventoryEl = null;
+      document.getElementById('inventoryOverlay')?.remove();
+      GS.inventoryOpen = false;
+    }
+
+    function toggleInventoryUI() {
+      if (GS.inventoryOpen) hideInventoryUI();
+      else showInventoryUI();
+    }
+
+    function showInventoryUI() {
+      if (document.getElementById('inventoryOverlay')) return;
+      GS.inventoryOpen = true;
+
+      inventoryEl = document.createElement('div');
+      inventoryEl.id = 'inventoryOverlay';
+      inventoryEl.className = 'ui-overlay';
+      inventoryEl.innerHTML = `
+        <div class="ui-card" style="width:min(760px, calc(100vw - 24px));">
+          <div class="title-logo">🎒 INVENTORY</div>
+          <div class="subtitle-logo">装備・所持品</div>
+
+          <div style="display:grid;grid-template-columns:220px 1fr;gap:16px;">
+            <div>
+              <div style="font-size:12px;color:#ffcc00;margin-bottom:8px;">装備</div>
+              <div id="equipPanel"></div>
+
+              <div style="margin-top:12px;border:1px solid #1e2142;border-radius:8px;padding:10px;background:#101321;">
+                <div style="font-size:12px;color:#ffcc00;margin-bottom:8px;">合計ステータス</div>
+                <div style="font-size:12px;color:#d8dcef;line-height:1.8;">
+                  <div>ATK: <span id="stAtk"></span></div>
+                  <div>DEF: <span id="stDef"></span></div>
+                  <div>MaxHP: <span id="stHp"></span></div>
+                  <div>MaxMP: <span id="stMp"></span></div>
+                </div>
+              </div>
+            </div>
+
+            <div>
+              <div style="font-size:12px;color:#ffcc00;margin-bottom:8px;">アイテム</div>
+              <div id="invPanel" style="max-height:320px;overflow:auto;border:1px solid #1e2142;border-radius:8px;padding:8px;background:#101321;"></div>
+              <div id="invActionPanel" style="margin-top:12px;"></div>
+            </div>
+          </div>
+
+          <div class="btn-row">
+            <button id="invCloseBtn" class="secondary-btn">閉じる</button>
+          </div>
+        </div>
+      `;
+
+      document.body.appendChild(inventoryEl);
+      document.getElementById('invCloseBtn')?.addEventListener('click', hideInventoryUI);
+      renderInventoryUI();
+    }
+
+    function renderInventoryUI() {
+      if (!GS.inventoryOpen) return;
+
+      P.equipped = normalizeEquipped(P.equipped);
+
+      const equipPanel = document.getElementById('equipPanel');
+      const invPanel = document.getElementById('invPanel');
+      const actionPanel = document.getElementById('invActionPanel');
+      if (!equipPanel || !invPanel || !actionPanel) return;
+
+      document.getElementById('stAtk').textContent = getTotalAtk();
+      document.getElementById('stDef').textContent = getTotalDef();
+      document.getElementById('stHp').textContent = getTotalMaxHp();
+      document.getElementById('stMp').textContent = getTotalMaxMp();
+
+      const slots = ['weapon','head','body','accessory'];
+
+      equipPanel.innerHTML = slots.map(slot => {
+        const itemId = P.equipped[slot];
+        const item = itemId ? ITEM_DATA[itemId] : null;
+        const desc = item && item.stats
+          ? Object.entries(item.stats).map(([k,v]) => `${k}+${v}`).join(' / ')
+          : '';
+        return `
+          <div style="border:1px solid #1e2142;border-radius:8px;padding:10px;margin-bottom:8px;background:#101321;">
+            <div style="font-size:10px;color:#7d8198;margin-bottom:4px;">${slot.toUpperCase()}</div>
+            <div style="font-size:12px;color:${item ? getItemRarityColor(item.rarity) : '#e4e8f8'};">${item ? item.name : '(empty)'}</div>
+            <div style="font-size:10px;color:#8b91ab;margin-top:4px;">${item ? desc : ''}</div>
+            ${item ? `<button data-uneq="${slot}" class="secondary-btn" style="margin-top:8px;padding:8px;">外す</button>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      if (GS.selectedInvIndex >= P.inventory.length) GS.selectedInvIndex = Math.max(0, P.inventory.length - 1);
+
+      invPanel.innerHTML = P.inventory.length === 0
+        ? `<div style="color:#7d8198;font-size:12px;">アイテムはありません</div>`
+        : P.inventory.map((row, i) => {
+            const item = ITEM_DATA[row.itemId];
+            if (!item) return '';
+            const selected = i === GS.selectedInvIndex;
+            return `
+              <div data-inv-index="${i}" style="
+                border:1px solid ${selected ? '#4a8dff' : '#1e2142'};
+                background:${selected ? 'rgba(74,141,255,.12)' : '#0d1120'};
+                border-radius:8px;
+                padding:10px;
+                margin-bottom:8px;
+                cursor:pointer;
+              ">
+                <div style="display:flex;justify-content:space-between;gap:8px;">
+                  <div>
+                    <div style="font-size:12px;color:${getItemRarityColor(item.rarity)};">${item.name}</div>
+                    <div style="font-size:10px;color:#7d8198;">${item.type} / ${item.rarity}</div>
+                  </div>
+                  <div style="font-size:12px;color:#ffcc00;">x${row.qty}</div>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+      const selectedRow = P.inventory[GS.selectedInvIndex];
+      const selectedItem = selectedRow ? ITEM_DATA[selectedRow.itemId] : null;
+
+      if (!selectedItem) {
+        actionPanel.innerHTML = '';
+      } else {
+        let desc = '';
+        if (selectedItem.type === 'consumable') {
+          desc = `HPを ${selectedItem.healHp || 0} 回復`;
+        } else {
+          const s = selectedItem.stats || {};
+          desc = Object.entries(s).map(([k,v]) => `${k}+${v}`).join(' / ') || '効果なし';
+        }
+
+        actionPanel.innerHTML = `
+          <div style="border:1px solid #1e2142;border-radius:8px;padding:10px;background:#101321;">
+            <div style="font-size:13px;color:${getItemRarityColor(selectedItem.rarity)};margin-bottom:6px;">${selectedItem.name}</div>
+            <div style="font-size:11px;color:#cfd5ea;margin-bottom:10px;">${desc}</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              ${['weapon','head','body','accessory'].includes(selectedItem.type) ? `<button id="btnEquipSel" class="primary-btn" style="width:auto;padding:8px 14px;">装備</button>` : ''}
+              ${selectedItem.type === 'consumable' ? `<button id="btnUseSel" class="primary-btn" style="width:auto;padding:8px 14px;">使う</button>` : ''}
+              <button id="btnDropSel" class="secondary-btn" style="width:auto;padding:8px 14px;">捨てる</button>
+            </div>
+          </div>
+        `;
+      }
+
+      invPanel.querySelectorAll('[data-inv-index]').forEach(el => {
+        el.addEventListener('click', () => {
+          GS.selectedInvIndex = parseInt(el.dataset.invIndex, 10);
+          renderInventoryUI();
+        });
+      });
+
+      equipPanel.querySelectorAll('[data-uneq]').forEach(el => {
+        el.addEventListener('click', () => {
+          unequipSlot(el.dataset.uneq);
+        });
+      });
+
+      document.getElementById('btnEquipSel')?.addEventListener('click', () => equipItemByIndex(GS.selectedInvIndex));
+      document.getElementById('btnUseSel')?.addEventListener('click', () => useItemByIndex(GS.selectedInvIndex));
+      document.getElementById('btnDropSel')?.addEventListener('click', () => dropItemByIndex(GS.selectedInvIndex));
+    }
+
+    function equipItemByIndex(index) {
+      const row = P.inventory[index];
+      if (!row) return;
+      const item = ITEM_DATA[row.itemId];
+      if (!item) return;
+      if (!['weapon','head','body','accessory'].includes(item.type)) return;
+
+      P.equipped = normalizeEquipped(P.equipped);
+      const prev = P.equipped[item.type];
+
+      removeItemFromInventoryNoSave(item.id, 1);
+      if (prev) addItemToInventoryNoSave(prev, 1);
+      P.equipped[item.type] = item.id;
+
+      P.hp = Math.min(P.hp, getTotalMaxHp());
+      P.mp = Math.min(P.mp, getTotalMaxMp());
+
+      savePlayer();
+      renderInventoryUI();
+    }
+
+    function unequipSlot(slot) {
+      P.equipped = normalizeEquipped(P.equipped);
+      const itemId = P.equipped[slot];
+      if (!itemId) return;
+
+      addItemToInventoryNoSave(itemId, 1);
+      P.equipped[slot] = null;
+      P.hp = Math.min(P.hp, getTotalMaxHp());
+      P.mp = Math.min(P.mp, getTotalMaxMp());
+
+      savePlayer();
+      renderInventoryUI();
+    }
+
+    function useItemByIndex(index) {
+      const row = P.inventory[index];
+      if (!row) return;
+      const item = ITEM_DATA[row.itemId];
+      if (!item) return;
+
+      if (item.type === 'consumable') {
+        if (item.healHp) P.hp = Math.min(getTotalMaxHp(), P.hp + item.healHp);
+        removeItemFromInventoryNoSave(item.id, 1);
+        addFloatText(P.x + P.w / 2, P.y - 20, `+${item.healHp} HP`, '#55dd88');
+        savePlayer();
+        renderInventoryUI();
+      }
+    }
+
+    function dropItemByIndex(index) {
+      const row = P.inventory[index];
+      if (!row) return;
+      const item = ITEM_DATA[row.itemId];
+      if (!item) return;
+
+      WORLD_DROPS.push({
+        id:'drop_' + Math.random().toString(36).slice(2,9),
+        itemId:item.id,
+        qty:1,
+        x:P.x + P.w / 2,
+        y:P.y + P.h - 10,
+        life:60 * 30
+      });
+
+      removeItemFromInventoryNoSave(item.id, 1);
+      savePlayer();
+      renderInventoryUI();
     }
 
     // -----------------------------------------
@@ -927,7 +1327,12 @@
         P.x = 200;
         P.y = 400;
         P.inventory = [];
-        P.equipped = {};
+        P.equipped = {
+          weapon:null,
+          head:null,
+          body:null,
+          accessory:null
+        };
         P.rebornCount = 0;
         P._pendingLogin = {
           login_id:id,
@@ -1034,8 +1439,11 @@
       P.y = data.pos_y ?? 400;
       P.rebornCount = data.reborn_count || 0;
       P.inventory = data.inventory ? safeJsonParse(data.inventory, []) : [];
-      P.equipped = data.equipped ? safeJsonParse(data.equipped, {}) : {};
+      P.equipped = normalizeEquipped(data.equipped ? safeJsonParse(data.equipped, {}) : {});
       P._pendingLogin = null;
+
+      P.hp = Math.min(P.hp, getTotalMaxHp());
+      P.mp = Math.min(P.mp, getTotalMaxMp());
 
       savePlayerToLocal();
       hideLoginUI();
@@ -1062,20 +1470,20 @@
         job:P.job || 'Novice',
         level:P.level || 1,
         exp:P.exp || 0,
-        hp:P.hp || 0,
-        max_hp:P.maxHp || 100,
-        mp:P.mp || 0,
-        max_mp:P.maxMp || 50,
-        atk:P.atk || 10,
-        def:P.def || 5,
-        meso:P.meso || 0,
-        crystals:P.crystals || 0,
+        hp:Math.floor(P.hp || 0),
+        max_hp:Math.floor(P.maxHp || 100),
+        mp:Math.floor(P.mp || 0),
+        max_mp:Math.floor(P.maxMp || 50),
+        atk:Math.floor(P.atk || 10),
+        def:Math.floor(P.def || 5),
+        meso:Math.floor(P.meso || 0),
+        crystals:Math.floor(P.crystals || 0),
         map_id:P.mapId || 'z01_m01',
         pos_x:Math.floor(P.x ?? 200),
         pos_y:Math.floor(P.y ?? 400),
         reborn_count:P.rebornCount || 0,
         inventory:JSON.stringify(P.inventory || []),
-        equipped:JSON.stringify(P.equipped || {}),
+        equipped:JSON.stringify(normalizeEquipped(P.equipped)),
         updated_at:new Date().toISOString(),
       };
 
@@ -1136,6 +1544,7 @@
     let joyStick = null;
     let attackBtn = null;
     let jumpBtn = null;
+    let bagBtn = null;
     let joyActive = false;
     let joyId = -1;
     let joyCX = 0;
@@ -1162,9 +1571,19 @@
       jumpBtn.className = 'touch-btn jump show';
       jumpBtn.textContent = '↑ 跳';
 
+      bagBtn = document.createElement('button');
+      bagBtn.className = 'touch-btn show';
+      bagBtn.textContent = '🎒';
+      bagBtn.style.right = '22px';
+      bagBtn.style.top = '22px';
+      bagBtn.style.bottom = 'auto';
+      bagBtn.style.background = 'rgba(255,255,255,.12)';
+      bagBtn.style.borderColor = 'rgba(255,255,255,.25)';
+
       document.body.appendChild(joyBase);
       document.body.appendChild(attackBtn);
       document.body.appendChild(jumpBtn);
+      document.body.appendChild(bagBtn);
 
       joyBase.addEventListener('touchstart', (e) => {
         e.preventDefault();
@@ -1222,6 +1641,11 @@
 
       bindTouchBtn('attack', attackBtn, 'rgba(255,78,97,.45)', 'rgba(255,78,97,.22)');
       bindTouchBtn('jump', jumpBtn, 'rgba(72,136,255,.45)', 'rgba(72,136,255,.22)');
+
+      bagBtn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        toggleInventoryUI();
+      }, { passive:false });
     }
 
     function updateJoy(cx, cy) {
@@ -1253,6 +1677,7 @@
       P.vx = 0;
       P.vy = 0;
       GS.portalLockUntil = nowMs() + 600;
+      WORLD_DROPS = [];
 
       MONSTERS = map.spawns.map((s, i) => {
         const base = MONSTER_DATA[s.type];
@@ -1299,8 +1724,29 @@
       }
     }
 
+    function rollMonsterDrops(monster) {
+      const table = DROP_TABLE[monster.type] || [];
+      for (const entry of table) {
+        if (Math.random() <= entry.chance) {
+          const qty = entry.min === entry.max
+            ? entry.min
+            : entry.min + Math.floor(Math.random() * (entry.max - entry.min + 1));
+
+          WORLD_DROPS.push({
+            id:'drop_' + Math.random().toString(36).slice(2,9),
+            itemId:entry.itemId,
+            qty,
+            x:monster.x + monster.w / 2,
+            y:monster.y + monster.h - 6,
+            life:60 * 30
+          });
+        }
+      }
+    }
+
     function basicAttack() {
       if (P.attackCd > 0 || GS.scene !== 'play') return;
+      if (GS.inventoryOpen) return;
 
       P.attackCd = ATTACK_COOLDOWN;
       P.attackFlash = 7;
@@ -1318,7 +1764,7 @@
         if (m.dead) continue;
         if (rectsOverlap(hitbox, m)) {
           hitAny = true;
-          const dmg = Math.max(1, P.atk - m.def + Math.floor(Math.random() * 4));
+          const dmg = Math.max(1, getTotalAtk() - m.def + Math.floor(Math.random() * 4));
           m.hp -= dmg;
           m.hitFlash = 5;
           addFloatText(m.x + m.w / 2, m.y - 6, '-' + dmg, '#ffd25a');
@@ -1328,6 +1774,8 @@
             addFloatText(m.x + m.w / 2, m.y - 18, '撃破!', '#55dd88');
             gainExp(m.exp);
             P.meso += m.meso;
+            rollMonsterDrops(m);
+            savePlayer();
           }
         }
       }
@@ -1348,8 +1796,8 @@
         P.maxMp += 6;
         P.atk += 2;
         P.def += 1;
-        P.hp = P.maxHp;
-        P.mp = P.maxMp;
+        P.hp = getTotalMaxHp();
+        P.mp = getTotalMaxMp();
         addFloatText(P.x + P.w / 2, P.y - 34, `LEVEL UP! Lv.${P.level}`, '#ffcc00');
         savePlayer();
       }
@@ -1358,14 +1806,14 @@
     function damagePlayer(amount) {
       if (P.hurtCd > 0) return;
 
-      const dmg = Math.max(1, amount - Math.floor(P.def * 0.35));
+      const dmg = Math.max(1, amount - Math.floor(getTotalDef() * 0.35));
       P.hp -= dmg;
       P.hurtCd = HURT_COOLDOWN;
       addFloatText(P.x + P.w / 2, P.y - 10, '-' + dmg, '#ff7a7a');
 
       if (P.hp <= 0) {
-        P.hp = P.maxHp;
-        P.mp = P.maxMp;
+        P.hp = getTotalMaxHp();
+        P.mp = getTotalMaxMp();
         P.x = 200;
         P.y = 400;
         P.vx = 0;
@@ -1376,371 +1824,416 @@
     }
 
     function updatePlayer() {
-      if (GS.scene !== 'play' || !GS.currentMap) return;
+  if (GS.scene !== 'play' || !GS.currentMap) return;
+  if (GS.inventoryOpen) return;
 
-      if (P.attackCd > 0) P.attackCd--;
-      if (P.hurtCd > 0) P.hurtCd--;
-      if (P.attackFlash > 0) P.attackFlash--;
+  if (P.attackCd > 0) P.attackCd--;
+  if (P.hurtCd > 0) P.hurtCd--;
+  if (P.attackFlash > 0) P.attackFlash--;
 
-      let dx = 0;
-      if (KEY['ArrowLeft'] || KEY['KeyA'] || VK.left) dx = -P.speed;
-      if (KEY['ArrowRight'] || KEY['KeyD'] || VK.right) dx = P.speed;
+  let dx = 0;
+  if (KEY['ArrowLeft'] || KEY['KeyA'] || VK.left) dx = -P.speed;
+  if (KEY['ArrowRight'] || KEY['KeyD'] || VK.right) dx = P.speed;
 
-      if (dx !== 0) P.facing = dx > 0 ? 1 : -1;
+  if (dx !== 0) P.facing = dx > 0 ? 1 : -1;
 
-      if ((KEY['Space'] || KEY['KeyW'] || KEY['ArrowUp'] || VK.jump) && !VK._jp) {
-        tryJump();
-      }
-      VK._jp = !!(KEY['Space'] || KEY['KeyW'] || KEY['ArrowUp'] || VK.jump);
+  if ((KEY['Space'] || KEY['KeyW'] || KEY['ArrowUp'] || VK.jump) && !VK._jp) {
+    tryJump();
+  }
+  VK._jp = !!(KEY['Space'] || KEY['KeyW'] || KEY['ArrowUp'] || VK.jump);
 
-      if ((KEY['KeyJ'] || KEY['KeyK'] || KEY['KeyX'] || VK.attack) && !VK._ap) {
-        basicAttack();
-      }
-      VK._ap = !!(KEY['KeyJ'] || KEY['KeyK'] || KEY['KeyX'] || VK.attack);
+  if ((KEY['KeyJ'] || KEY['KeyK'] || KEY['KeyX'] || VK.attack) && !VK._ap) {
+    basicAttack();
+  }
+  VK._ap = !!(KEY['KeyJ'] || KEY['KeyK'] || KEY['KeyX'] || VK.attack);
 
-      P.vx = dx;
-      P.x += P.vx;
-      P.x = clamp(P.x, 0, GS.currentMap.width - P.w);
+  P.vx = dx;
+  P.x += P.vx;
+  P.x = clamp(P.x, 0, GS.currentMap.width - P.w);
 
-      P.vy += GRAVITY;
-      if (P.vy > MAX_FALL) P.vy = MAX_FALL;
-      P.y += P.vy;
+  P.vy += GRAVITY;
+  if (P.vy > MAX_FALL) P.vy = MAX_FALL;
+  P.y += P.vy;
 
-      P.onGround = false;
-      const plats = getPlatforms();
+  P.onGround = false;
+  const plats = getPlatforms();
 
-      for (const pf of plats) {
-        if (
-          P.x + P.w > pf.x &&
-          P.x < pf.x + pf.w &&
-          P.y + P.h >= pf.y &&
-          P.y + P.h - P.vy <= pf.y &&
-          P.vy >= 0
-        ) {
-          P.y = pf.y - P.h;
-          P.vy = 0;
-          P.onGround = true;
-        }
-      }
+  for (const pf of plats) {
+    if (
+      P.x + P.w > pf.x &&
+      P.x < pf.x + pf.w &&
+      P.y + P.h >= pf.y &&
+      P.y + P.h - P.vy <= pf.y &&
+      P.vy >= 0
+    ) {
+      P.y = pf.y - P.h;
+      P.vy = 0;
+      P.onGround = true;
+    }
+  }
 
-      if (P.y > GAME_H + 150) {
-        P.hp = Math.max(1, P.hp - 10);
-        P.x = 200;
-        P.y = 400;
-        P.vx = 0;
-        P.vy = 0;
-      }
+  if (P.y > GAME_H + 150) {
+    P.hp = Math.max(1, P.hp - 10);
+    P.x = 200;
+    P.y = 400;
+    P.vx = 0;
+    P.vy = 0;
+  }
 
-      for (const po of GS.currentMap.portals) {
-        if (nowMs() < GS.portalLockUntil) continue;
-        if (rectsOverlap(P, po)) {
-          GS.portalLockUntil = nowMs() + 900;
-          loadMap(po.to, po.tx, po.ty);
-          savePlayer();
-          break;
-        }
-      }
+  for (const po of GS.currentMap.portals) {
+    if (nowMs() < GS.portalLockUntil) continue;
+    if (rectsOverlap(P, po)) {
+      GS.portalLockUntil = nowMs() + 900;
+      loadMap(po.to, po.tx, po.ty);
+      savePlayer();
+      break;
+    }
+  }
 
-      updateCamera();
+  updateCamera();
+}
+
+function updateMonsters() {
+  if (GS.scene !== 'play') return;
+
+  for (const m of MONSTERS) {
+    if (m.dead) continue;
+    if (m.hitFlash > 0) m.hitFlash--;
+
+    m.x += m.speed * m.facing;
+    if (m.x < m.minX) {
+      m.x = m.minX;
+      m.facing = 1;
+    }
+    if (m.x + m.w > m.maxX) {
+      m.x = m.maxX - m.w;
+      m.facing = -1;
     }
 
-    function updateMonsters() {
-      if (GS.scene !== 'play') return;
-
-      for (const m of MONSTERS) {
-        if (m.dead) continue;
-        if (m.hitFlash > 0) m.hitFlash--;
-
-        m.x += m.speed * m.facing;
-        if (m.x < m.minX) {
-          m.x = m.minX;
-          m.facing = 1;
-        }
-        if (m.x + m.w > m.maxX) {
-          m.x = m.maxX - m.w;
-          m.facing = -1;
-        }
-
-        if (rectsOverlap(P, m)) {
-          damagePlayer(m.atk);
-        }
-      }
-
-      MONSTERS = MONSTERS.filter(m => !m.dead);
+    if (rectsOverlap(P, m)) {
+      damagePlayer(m.atk);
     }
+  }
 
-    function updateHitTexts() {
-      GS.hitTexts.forEach(t => {
-        t.y -= 0.6;
-        t.life--;
-      });
-      GS.hitTexts = GS.hitTexts.filter(t => t.life > 0);
+  MONSTERS = MONSTERS.filter(m => !m.dead);
+}
+
+function updateWorldDrops() {
+  for (const d of WORLD_DROPS) {
+    d.life--;
+
+    const pickupBox = {
+      x: d.x - 10,
+      y: d.y - 10,
+      w: 20,
+      h: 20
+    };
+
+    if (rectsOverlap(P, pickupBox)) {
+      addItemToInventory(d.itemId, d.qty);
+      addFloatText(d.x, d.y - 10, `${ITEM_DATA[d.itemId]?.name || d.itemId} GET`, '#ffcc00');
+      d.life = 0;
     }
+  }
 
-    function updateAutosave(ts) {
-      if (GS.scene !== 'play') return;
-      if (!GS.autosaveAt) GS.autosaveAt = ts + 20000;
-      if (ts >= GS.autosaveAt) {
-        savePlayer();
-        GS.autosaveAt = ts + 20000;
-      }
+  WORLD_DROPS = WORLD_DROPS.filter(d => d.life > 0);
+}
+
+function updateHitTexts() {
+  GS.hitTexts.forEach(t => {
+    t.y -= 0.6;
+    t.life--;
+  });
+  GS.hitTexts = GS.hitTexts.filter(t => t.life > 0);
+}
+
+function updateAutosave(ts) {
+  if (GS.scene !== 'play') return;
+  if (!GS.autosaveAt) GS.autosaveAt = ts + 20000;
+  if (ts >= GS.autosaveAt) {
+    savePlayer();
+    GS.autosaveAt = ts + 20000;
+  }
+}
+
+function drawLoginScene() {
+  CTX.fillStyle = '#07070f';
+  CTX.fillRect(0, 0, GAME_W, GAME_H);
+
+  for (const s of GS.stars) {
+    CTX.fillStyle = `rgba(255,255,255,${s.a})`;
+    CTX.fillRect(s.x, s.y, 2, 2);
+  }
+
+  CTX.fillStyle = '#ffcc00';
+  CTX.font = 'bold 32px Courier New';
+  CTX.textAlign = 'center';
+  CTX.fillText('ALTERA', GAME_W / 2, 150);
+
+  CTX.fillStyle = '#59607d';
+  CTX.font = '14px Courier New';
+  CTX.fillText('MASSIVELY MULTIPLAYER ONLINE', GAME_W / 2, 180);
+
+  CTX.textAlign = 'left';
+}
+
+function drawCreateScene() {
+  CTX.fillStyle = '#0a0c16';
+  CTX.fillRect(0, 0, GAME_W, GAME_H);
+
+  CTX.fillStyle = '#ffcc00';
+  CTX.font = 'bold 26px Courier New';
+  CTX.textAlign = 'center';
+  CTX.fillText('キャラクター作成', GAME_W / 2, 130);
+
+  CTX.fillStyle = '#a8afc9';
+  CTX.font = '14px Courier New';
+  CTX.fillText('名前入力UIを表示中...', GAME_W / 2, 170);
+
+  CTX.textAlign = 'left';
+}
+
+function drawSky(map) {
+  const g = CTX.createLinearGradient(0, 0, 0, GAME_H);
+  g.addColorStop(0, map.skyTop);
+  g.addColorStop(1, map.skyBottom);
+  CTX.fillStyle = g;
+  CTX.fillRect(0, 0, GAME_W, GAME_H);
+
+  CTX.fillStyle = map.haze;
+  CTX.globalAlpha = 0.08;
+  for (let i = 0; i < 5; i++) {
+    CTX.beginPath();
+    CTX.arc((i * 220 + 90) - (GS.cameraX * 0.2 % 120), 110 + (i % 2) * 30, 120, 0, Math.PI * 2);
+    CTX.fill();
+  }
+  CTX.globalAlpha = 1;
+}
+
+function drawParallax() {
+  CTX.save();
+  CTX.translate(-GS.cameraX * 0.35, 0);
+  CTX.fillStyle = 'rgba(0,0,0,.18)';
+  for (let i = 0; i < 20; i++) {
+    const x = i * 180;
+    CTX.beginPath();
+    CTX.moveTo(x, GAME_H);
+    CTX.lineTo(x + 70, 320 + (i % 3) * 20);
+    CTX.lineTo(x + 150, GAME_H);
+    CTX.closePath();
+    CTX.fill();
+  }
+  CTX.restore();
+}
+
+function drawPlatforms(map) {
+  for (const pf of map.platforms) {
+    const x = pf.x - GS.cameraX;
+    const y = pf.y;
+    if (x + pf.w < 0 || x > GAME_W) continue;
+
+    if (pf.type === 'ground') {
+      CTX.fillStyle = map.ground;
+      CTX.fillRect(x, y, pf.w, pf.h);
+      CTX.fillStyle = map.dirt;
+      CTX.fillRect(x, y + 12, pf.w, pf.h - 12);
+    } else if (pf.type === 'wood') {
+      CTX.fillStyle = '#8a623a';
+      CTX.fillRect(x, y, pf.w, pf.h);
+      CTX.fillStyle = '#a87a46';
+      CTX.fillRect(x, y, pf.w, 4);
+    } else {
+      CTX.fillStyle = '#6d727f';
+      CTX.fillRect(x, y, pf.w, pf.h);
+      CTX.fillStyle = '#8a91a1';
+      CTX.fillRect(x, y, pf.w, 4);
     }
+  }
+}
 
-    // -----------------------------------------
-    // Draw
-    // -----------------------------------------
-    function drawLoginScene() {
-      CTX.fillStyle = '#07070f';
-      CTX.fillRect(0, 0, GAME_W, GAME_H);
+function drawPortals(map) {
+  for (const po of map.portals) {
+    const x = po.x - GS.cameraX;
+    if (x + po.w < 0 || x > GAME_W) continue;
 
-      for (const s of GS.stars) {
-        CTX.fillStyle = `rgba(255,255,255,${s.a})`;
-        CTX.fillRect(s.x, s.y, 2, 2);
-      }
+    CTX.fillStyle = 'rgba(120,200,255,.18)';
+    CTX.fillRect(x, po.y, po.w, po.h);
+    CTX.strokeStyle = 'rgba(120,200,255,.65)';
+    CTX.strokeRect(x, po.y, po.w, po.h);
+  }
+}
 
-      CTX.fillStyle = '#ffcc00';
-      CTX.font = 'bold 32px Courier New';
-      CTX.textAlign = 'center';
-      CTX.fillText('ALTERA', GAME_W / 2, 150);
+function drawWorldDrops() {
+  for (const d of WORLD_DROPS) {
+    const x = Math.floor(d.x - GS.cameraX);
+    const y = Math.floor(d.y);
+    if (x < -30 || x > GAME_W + 30) continue;
 
-      CTX.fillStyle = '#59607d';
-      CTX.font = '14px Courier New';
-      CTX.fillText('MASSIVELY MULTIPLAYER ONLINE', GAME_W / 2, 180);
+    CTX.fillStyle = 'rgba(255,204,0,.95)';
+    CTX.fillRect(x - 6, y - 6, 12, 12);
 
-      CTX.textAlign = 'left';
-    }
+    CTX.fillStyle = '#fff';
+    CTX.font = '10px Courier New';
+    CTX.textAlign = 'center';
+    CTX.fillText(ITEM_DATA[d.itemId]?.name || d.itemId, x, y - 12);
+    CTX.textAlign = 'left';
+  }
+}
 
-    function drawCreateScene() {
-      CTX.fillStyle = '#0a0c16';
-      CTX.fillRect(0, 0, GAME_W, GAME_H);
+function drawMonsters() {
+  for (const m of MONSTERS) {
+    const x = Math.floor(m.x - GS.cameraX);
+    const y = Math.floor(m.y);
+    if (x + m.w < 0 || x > GAME_W) continue;
 
-      CTX.fillStyle = '#ffcc00';
-      CTX.font = 'bold 26px Courier New';
-      CTX.textAlign = 'center';
-      CTX.fillText('キャラクター作成', GAME_W / 2, 130);
+    CTX.fillStyle = m.hitFlash > 0 ? '#ffffff' : m.color;
+    CTX.fillRect(x, y, m.w, m.h);
 
-      CTX.fillStyle = '#a8afc9';
-      CTX.font = '14px Courier New';
-      CTX.fillText('名前入力UIを表示中...', GAME_W / 2, 170);
-      CTX.textAlign = 'left';
-    }
+    CTX.fillStyle = 'rgba(0,0,0,.5)';
+    CTX.fillRect(x, y - 8, m.w, 4);
+    CTX.fillStyle = '#ff6666';
+    CTX.fillRect(x, y - 8, m.w * (m.hp / m.maxHp), 4);
+  }
+}
 
-    function drawSky(map) {
-      const g = CTX.createLinearGradient(0, 0, 0, GAME_H);
-      g.addColorStop(0, map.skyTop);
-      g.addColorStop(1, map.skyBottom);
-      CTX.fillStyle = g;
-      CTX.fillRect(0, 0, GAME_W, GAME_H);
+function drawPlayer() {
+  const px = Math.floor(P.x - GS.cameraX);
+  const py = Math.floor(P.y);
 
-      CTX.fillStyle = map.haze;
-      CTX.globalAlpha = 0.08;
-      for (let i = 0; i < 5; i++) {
-        CTX.beginPath();
-        CTX.arc((i * 220 + 90) - (GS.cameraX * 0.2 % 120), 110 + (i % 2) * 30, 120, 0, Math.PI * 2);
-        CTX.fill();
-      }
-      CTX.globalAlpha = 1;
-    }
+  CTX.fillStyle = P.hurtCd > 0 ? '#ff9090' : '#ffe7a8';
+  CTX.fillRect(px, py, P.w, P.h);
 
-    function drawParallax() {
-      CTX.save();
-      CTX.translate(-GS.cameraX * 0.35, 0);
-      CTX.fillStyle = 'rgba(0,0,0,.18)';
-      for (let i = 0; i < 20; i++) {
-        const x = i * 180;
-        CTX.beginPath();
-        CTX.moveTo(x, GAME_H);
-        CTX.lineTo(x + 70, 320 + (i % 3) * 20);
-        CTX.lineTo(x + 150, GAME_H);
-        CTX.closePath();
-        CTX.fill();
-      }
-      CTX.restore();
-    }
+  CTX.fillStyle = '#222';
+  if (P.facing === 1) CTX.fillRect(px + 18, py + 12, 4, 4);
+  else CTX.fillRect(px + 6, py + 12, 4, 4);
 
-    function drawPlatforms(map) {
-      for (const pf of map.platforms) {
-        const x = pf.x - GS.cameraX;
-        const y = pf.y;
-        if (x + pf.w < 0 || x > GAME_W) continue;
+  if (P.attackFlash > 0) {
+    CTX.fillStyle = 'rgba(255,220,120,.35)';
+    if (P.facing === 1) CTX.fillRect(px + P.w - 2, py + 6, 46, 26);
+    else CTX.fillRect(px - 46, py + 6, 46, 26);
+  }
+}
 
-        if (pf.type === 'ground') {
-          CTX.fillStyle = map.ground;
-          CTX.fillRect(x, y, pf.w, pf.h);
-          CTX.fillStyle = map.dirt;
-          CTX.fillRect(x, y + 12, pf.w, pf.h - 12);
-        } else if (pf.type === 'wood') {
-          CTX.fillStyle = '#8a623a';
-          CTX.fillRect(x, y, pf.w, pf.h);
-          CTX.fillStyle = '#a87a46';
-          CTX.fillRect(x, y, pf.w, 4);
-        } else {
-          CTX.fillStyle = '#6d727f';
-          CTX.fillRect(x, y, pf.w, pf.h);
-          CTX.fillStyle = '#8a91a1';
-          CTX.fillRect(x, y, pf.w, 4);
-        }
-      }
-    }
+function drawHitTexts() {
+  CTX.font = 'bold 14px Courier New';
+  CTX.textAlign = 'center';
+  for (const t of GS.hitTexts) {
+    CTX.globalAlpha = Math.max(0, t.life / 42);
+    CTX.fillStyle = t.color;
+    CTX.fillText(t.text, t.x - GS.cameraX, t.y);
+  }
+  CTX.globalAlpha = 1;
+  CTX.textAlign = 'left';
+}
 
-    function drawPortals(map) {
-      for (const po of map.portals) {
-        const x = po.x - GS.cameraX;
-        if (x + po.w < 0 || x > GAME_W) continue;
+function drawHUD() {
+  CTX.fillStyle = 'rgba(0,0,0,.45)';
+  CTX.fillRect(16, 16, 260, 74);
 
-        CTX.fillStyle = 'rgba(120,200,255,.18)';
-        CTX.fillRect(x, po.y, po.w, po.h);
-        CTX.strokeStyle = 'rgba(120,200,255,.65)';
-        CTX.strokeRect(x, po.y, po.w, po.h);
-      }
-    }
+  CTX.fillStyle = '#ffffff';
+  CTX.font = '12px Courier New';
+  CTX.fillText(`${P.name || 'NO NAME'}  Lv.${P.level}  ${P.job}`, 24, 34);
 
-    function drawMonsters() {
-      for (const m of MONSTERS) {
-        const x = Math.floor(m.x - GS.cameraX);
-        const y = Math.floor(m.y);
-        if (x + m.w < 0 || x > GAME_W) continue;
+  CTX.fillStyle = '#331116';
+  CTX.fillRect(24, 42, 180, 10);
+  CTX.fillStyle = '#ff5a68';
+  CTX.fillRect(24, 42, 180 * (P.hp / Math.max(1, getTotalMaxHp())), 10);
+  CTX.strokeStyle = 'rgba(255,255,255,.15)';
+  CTX.strokeRect(24, 42, 180, 10);
 
-        CTX.fillStyle = m.hitFlash > 0 ? '#ffffff' : m.color;
-        CTX.fillRect(x, y, m.w, m.h);
+  CTX.fillStyle = '#111b33';
+  CTX.fillRect(24, 58, 180, 8);
+  CTX.fillStyle = '#4a8dff';
+  CTX.fillRect(24, 58, 180 * (P.mp / Math.max(1, getTotalMaxMp())), 8);
+  CTX.strokeStyle = 'rgba(255,255,255,.12)';
+  CTX.strokeRect(24, 58, 180, 8);
 
-        CTX.fillStyle = 'rgba(0,0,0,.5)';
-        CTX.fillRect(x, y - 8, m.w, 4);
-        CTX.fillStyle = '#ff6666';
-        CTX.fillRect(x, y - 8, m.w * (m.hp / m.maxHp), 4);
-      }
-    }
+  CTX.fillStyle = '#e0e5f7';
+  CTX.fillText(`HP ${P.hp} / ${getTotalMaxHp()}`, 210, 51);
+  CTX.fillText(`MP ${P.mp} / ${getTotalMaxMp()}`, 210, 67);
 
-    function drawPlayer() {
-      const px = Math.floor(P.x - GS.cameraX);
-      const py = Math.floor(P.y);
+  CTX.fillStyle = '#c3cae6';
+  CTX.fillText(`ATK ${getTotalAtk()}  DEF ${getTotalDef()}`, 24, 82);
 
-      CTX.fillStyle = P.hurtCd > 0 ? '#ff9090' : '#ffe7a8';
-      CTX.fillRect(px, py, P.w, P.h);
+  const need = needExp(P.level);
+  CTX.fillStyle = 'rgba(0,0,0,.45)';
+  CTX.fillRect(290, 16, 220, 24);
+  CTX.fillStyle = '#3a2d00';
+  CTX.fillRect(298, 24, 180, 8);
+  CTX.fillStyle = '#ffcc00';
+  CTX.fillRect(298, 24, 180 * (P.exp / need), 8);
+  CTX.strokeStyle = 'rgba(255,255,255,.12)';
+  CTX.strokeRect(298, 24, 180, 8);
+  CTX.fillStyle = '#d8dcef';
+  CTX.fillText(`EXP ${P.exp} / ${need}`, 298, 20);
 
-      CTX.fillStyle = '#222';
-      if (P.facing === 1) CTX.fillRect(px + 18, py + 12, 4, 4);
-      else CTX.fillRect(px + 6, py + 12, 4, 4);
+  if (GS.currentMap) {
+    CTX.fillStyle = 'rgba(0,0,0,.42)';
+    CTX.fillRect(GAME_W - 230, 16, 214, 54);
+    CTX.fillStyle = '#ffcc00';
+    CTX.fillText(`MAP: ${GS.currentMap.name}`, GAME_W - 220, 34);
+    CTX.fillStyle = '#d8dcef';
+    CTX.fillText(`MESO: ${P.meso}`, GAME_W - 220, 52);
+  }
 
-      if (P.attackFlash > 0) {
-        CTX.fillStyle = 'rgba(255,220,120,.35)';
-        if (P.facing === 1) CTX.fillRect(px + P.w - 2, py + 6, 46, 26);
-        else CTX.fillRect(px - 46, py + 6, 46, 26);
-      }
-    }
+  if (GS.inventoryOpen) {
+    CTX.fillStyle = 'rgba(255,255,255,.10)';
+    CTX.fillRect(0, 0, GAME_W, GAME_H);
+  }
+}
 
-    function drawHitTexts() {
-      CTX.font = 'bold 14px Courier New';
-      CTX.textAlign = 'center';
-      for (const t of GS.hitTexts) {
-        CTX.globalAlpha = Math.max(0, t.life / 42);
-        CTX.fillStyle = t.color;
-        CTX.fillText(t.text, t.x - GS.cameraX, t.y);
-      }
-      CTX.globalAlpha = 1;
-      CTX.textAlign = 'left';
-    }
+function drawMapScene() {
+  const map = GS.currentMap;
+  if (!map) {
+    CTX.fillStyle = '#000';
+    CTX.fillRect(0, 0, GAME_W, GAME_H);
+    return;
+  }
 
-    function drawHUD() {
-      CTX.fillStyle = 'rgba(0,0,0,.45)';
-      CTX.fillRect(16, 16, 220, 64);
+  drawSky(map);
+  drawParallax();
+  drawPlatforms(map);
+  drawPortals(map);
+  drawWorldDrops();
+  drawMonsters();
+  drawPlayer();
+  drawHitTexts();
+  drawHUD();
+}
 
-      CTX.fillStyle = '#ffffff';
-      CTX.font = '12px Courier New';
-      CTX.fillText(`${P.name || 'NO NAME'}  Lv.${P.level}  ${P.job}`, 24, 34);
+function gameLoop(ts) {
+  if (!CVS || !CTX) return;
 
-      CTX.fillStyle = '#331116';
-      CTX.fillRect(24, 42, 180, 10);
-      CTX.fillStyle = '#ff5a68';
-      CTX.fillRect(24, 42, 180 * (P.hp / P.maxHp), 10);
-      CTX.strokeStyle = 'rgba(255,255,255,.15)';
-      CTX.strokeRect(24, 42, 180, 10);
+  if (GS.scene === 'login') {
+    drawLoginScene();
+  } else if (GS.scene === 'create') {
+    drawCreateScene();
+  } else if (GS.scene === 'play') {
+    updatePlayer();
+    updateMonsters();
+    updateWorldDrops();
+    updateHitTexts();
+    updateAutosave(ts);
+    drawMapScene();
+  }
 
-      CTX.fillStyle = '#111b33';
-      CTX.fillRect(24, 58, 180, 8);
-      CTX.fillStyle = '#4a8dff';
-      CTX.fillRect(24, 58, 180 * (P.mp / P.maxMp), 8);
-      CTX.strokeStyle = 'rgba(255,255,255,.12)';
-      CTX.strokeRect(24, 58, 180, 8);
+  requestAnimationFrame(gameLoop);
+}
 
-      const need = needExp(P.level);
-      CTX.fillStyle = 'rgba(0,0,0,.45)';
-      CTX.fillRect(250, 16, 220, 24);
-      CTX.fillStyle = '#3a2d00';
-      CTX.fillRect(258, 24, 180, 8);
-      CTX.fillStyle = '#ffcc00';
-      CTX.fillRect(258, 24, 180 * (P.exp / need), 8);
-      CTX.strokeStyle = 'rgba(255,255,255,.12)';
-      CTX.strokeRect(258, 24, 180, 8);
-      CTX.fillStyle = '#d8dcef';
-      CTX.fillText(`EXP ${P.exp} / ${need}`, 258, 20);
+window.addEventListener('DOMContentLoaded', () => {
+  initCanvas();
+  initSB();
+  loadPlayerFromLocal();
 
-      if (GS.currentMap) {
-        CTX.fillStyle = 'rgba(0,0,0,.42)';
-        CTX.fillRect(GAME_W - 230, 16, 214, 54);
-        CTX.fillStyle = '#ffcc00';
-        CTX.fillText(`MAP: ${GS.currentMap.name}`, GAME_W - 220, 34);
-        CTX.fillStyle = '#d8dcef';
-        CTX.fillText(`MESO: ${P.meso}`, GAME_W - 220, 52);
-      }
-    }
+  GS.scene = 'login';
+  showLoginUI();
 
-    function drawMapScene() {
-      const map = GS.currentMap;
-      if (!map) {
-        CTX.fillStyle = '#000';
-        CTX.fillRect(0, 0, GAME_W, GAME_H);
-        return;
-      }
+  requestAnimationFrame(gameLoop);
+});
 
-      drawSky(map);
-      drawParallax();
-      drawPlatforms(map);
-      drawPortals(map);
-      drawMonsters();
-      drawPlayer();
-      drawHitTexts();
-      drawHUD();
-    }
-
-    // -----------------------------------------
-    // Game Loop
-    // -----------------------------------------
-    function gameLoop(ts) {
-      if (!CVS || !CTX) return;
-
-      if (GS.scene === 'login') {
-        drawLoginScene();
-      } else if (GS.scene === 'create') {
-        drawCreateScene();
-      } else if (GS.scene === 'play') {
-        updatePlayer();
-        updateMonsters();
-        updateHitTexts();
-        updateAutosave(ts);
-        drawMapScene();
-      }
-
-      requestAnimationFrame(gameLoop);
-    }
-
-    // -----------------------------------------
-    // Boot
-    // -----------------------------------------
-    window.addEventListener('DOMContentLoaded', () => {
-      initCanvas();
-      initSB();
-      loadPlayerFromLocal();
-
-      GS.scene = 'login';
-      showLoginUI();
-
-      requestAnimationFrame(gameLoop);
-    });
-
-    window.addEventListener('beforeunload', () => {
-      savePlayerToLocal();
-    });
+window.addEventListener('beforeunload', () => {
+  savePlayerToLocal();
+});
   </script>
 </body>
 </html>
