@@ -1,0 +1,1034 @@
+<!-- ALTERA-ADMIN-v3 -->
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ALTERA ADMIN</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#07070f;--bg2:#0d0d1a;--bg3:#111122;
+  --bd:#1a1a3a;--ac:#4488ff;--gold:#ffcc00;
+  --gr:#44ff88;--rd:#ff4444;
+  --tx:#ccc;--tx2:#888;--tx3:#555;
+  --fn:'Courier New',monospace;
+}
+body{background:var(--bg);color:var(--tx);font-family:var(--fn);height:100vh;display:flex;flex-direction:column;}
+.top{background:var(--bg2);border-bottom:1px solid var(--bd);padding:10px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0;}
+.top h1{color:var(--gold);font-size:13px;letter-spacing:2px;}
+.top .conn{display:flex;gap:6px;align-items:center;margin-left:auto;}
+.top input{background:#111;border:1px solid var(--bd);color:var(--tx);padding:5px 8px;font-size:11px;border-radius:3px;font-family:var(--fn);}
+.top input#tUrl{width:240px;}
+.top input#tKey{width:200px;}
+.top button{padding:6px 14px;border:none;cursor:pointer;font-family:var(--fn);font-size:11px;font-weight:bold;border-radius:3px;}
+.btn-ac{background:var(--ac);color:#000;}
+.btn-gr{background:var(--gr);color:#000;}
+.btn-rd{background:var(--rd);color:#fff;}
+.btn-go{background:transparent;border:1px solid var(--bd);color:var(--tx2);}
+.btn-go:hover{border-color:var(--tx);color:var(--tx);}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--tx3);}
+.dot.ok{background:var(--gr);}
+.dot.err{background:var(--rd);}
+.layout{display:flex;flex:1;overflow:hidden;}
+.sidebar{width:180px;background:var(--bg2);border-right:1px solid var(--bd);overflow-y:auto;flex-shrink:0;padding:8px 0;}
+.nav-sec{padding:4px 0;}
+.nav-lbl{padding:4px 12px;color:var(--tx3);font-size:9px;letter-spacing:1px;}
+.nav-btn{display:block;width:100%;text-align:left;padding:8px 12px;background:none;border:none;border-left:2px solid transparent;color:var(--tx2);font-family:var(--fn);font-size:11px;cursor:pointer;}
+.nav-btn:hover{background:var(--bg3);color:var(--tx);}
+.nav-btn.on{background:rgba(68,136,255,.1);color:var(--ac);border-left-color:var(--ac);}
+.main{flex:1;overflow-y:auto;padding:20px;}
+.panel{display:none;}
+.panel.on{display:block;}
+.ptitle{color:var(--gold);font-size:16px;margin-bottom:4px;}
+.psub{color:var(--tx3);font-size:11px;margin-bottom:18px;}
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:5px;padding:16px;margin-bottom:14px;}
+.card h3{color:var(--ac);font-size:11px;margin-bottom:12px;}
+.row{display:flex;gap:8px;align-items:center;margin-bottom:8px;flex-wrap:wrap;}
+.lbl{color:var(--tx2);font-size:11px;min-width:100px;flex-shrink:0;}
+.inp{background:#111;border:1px solid var(--bd);color:var(--tx);padding:6px 8px;font-family:var(--fn);font-size:11px;border-radius:3px;flex:1;}
+.inp:focus{border-color:var(--ac);outline:none;}
+.inp.sm{max-width:90px;flex:none;}
+.inp.md{max-width:180px;}
+select.inp{cursor:pointer;}
+.tbl{width:100%;border-collapse:collapse;font-size:11px;}
+.tbl th{padding:7px 8px;text-align:left;color:var(--tx3);border-bottom:1px solid var(--bd);font-weight:normal;}
+.tbl td{padding:7px 8px;border-bottom:1px solid #0a0a14;}
+.tbl tr:hover td{background:var(--bg3);}
+.badge{display:inline-block;padding:2px 7px;border-radius:2px;font-size:9px;}
+.bgr{background:rgba(68,255,136,.1);color:var(--gr);}
+.bba{background:rgba(68,136,255,.1);color:var(--ac);}
+.bgo{background:rgba(255,204,0,.1);color:var(--gold);}
+.brd{background:rgba(255,68,68,.1);color:var(--rd);}
+.bgx{background:rgba(136,136,136,.1);color:var(--tx3);}
+.img-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:8px;}
+.icard{background:var(--bg3);border:1px solid var(--bd);border-radius:4px;padding:8px;text-align:center;cursor:pointer;transition:.15s;}
+.icard:hover{border-color:var(--ac);}
+.icard.ok{border-color:rgba(68,255,136,.4);}
+.icard.upd{border-color:var(--gold);}
+.icard img{width:56px;height:56px;object-fit:contain;image-rendering:pixelated;background:#000;border-radius:2px;margin-bottom:4px;display:block;margin-left:auto;margin-right:auto;}
+.icard .nm{color:var(--tx3);font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fbar{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:10px;}
+.fbtn{padding:3px 10px;border:1px solid var(--bd);background:none;color:var(--tx3);font-family:var(--fn);font-size:9px;cursor:pointer;border-radius:2px;}
+.fbtn.on{border-color:var(--ac);color:var(--ac);background:rgba(68,136,255,.08);}
+.code{background:#000;border:1px solid var(--bd);border-radius:3px;padding:10px;font-family:var(--fn);font-size:10px;color:var(--gr);white-space:pre-wrap;word-break:break-all;max-height:280px;overflow-y:auto;}
+#toast{position:fixed;bottom:16px;right:16px;background:var(--bg2);border:1px solid var(--ac);color:var(--tx);padding:8px 14px;font-size:11px;border-radius:4px;z-index:9999;opacity:0;transition:opacity .3s;pointer-events:none;}
+#toast.show{opacity:1;}
+</style>
+</head>
+<body>
+
+<div id="toast"></div>
+
+<!-- ── トップバー ── -->
+<div class="top">
+  <h1>⚔ ALTERA ADMIN</h1>
+  <div class="conn">
+    <span class="dot" id="dot"></span>
+    <span id="stxt" style="font-size:10px;color:var(--tx3)">未接続</span>
+    <input id="tUrl" placeholder="Supabase URL">
+    <input id="tKey" type="password" placeholder="anon key">
+    <button class="btn-ac" id="connectBtn" onclick="connect()">🔗 接続</button>
+  </div>
+</div>
+
+<div class="layout">
+<!-- ── サイドバー ── -->
+<div class="sidebar">
+  <div class="nav-sec">
+    <div class="nav-lbl">OVERVIEW</div>
+    <button class="nav-btn on" onclick="nav('dashboard')">📊 ダッシュボード</button>
+  </div>
+  <div class="nav-sec">
+    <div class="nav-lbl">ASSETS</div>
+    <button class="nav-btn" onclick="nav('monsters')">👾 モンスター画像</button>
+    <button class="nav-btn" onclick="nav('characters')">🧙 キャラクター</button>
+    <button class="nav-btn" onclick="nav('motions')">🏃 モーション</button>
+    <button class="nav-btn" onclick="nav('items')">⚔️ アイテム画像</button>
+    <button class="nav-btn" onclick="nav('themes')">🎨 UIテーマ</button>
+  </div>
+  <div class="nav-sec">
+    <div class="nav-lbl">MANAGEMENT</div>
+    <button class="nav-btn" onclick="nav('codes')">🎁 コード発行</button>
+    <button class="nav-btn" onclick="nav('players')">👥 プレイヤー</button>
+    <button class="nav-btn" onclick="nav('market')">🏪 マーケット</button>
+    <button class="nav-btn" onclick="nav('ac')">🛡 チートログ</button>
+  </div>
+  <div class="nav-sec">
+    <div class="nav-lbl">ADD</div>
+    <button class="nav-btn" onclick="nav('add_monster')">➕ モンスター</button>
+    <button class="nav-btn" onclick="nav('add_item')">➕ アイテム</button>
+    <button class="nav-btn" onclick="nav('add_map')">➕ マップ</button>
+    <button class="nav-btn" onclick="nav('add_job')">➕ 職業</button>
+  </div>
+</div>
+
+<!-- ── メイン ── -->
+<div class="main">
+
+<!-- ダッシュボード -->
+<div class="panel on" id="p-dashboard">
+  <div class="ptitle">📊 ダッシュボード</div>
+  <div class="psub">上のバーにURLとKeyを入力して「接続」を押してください</div>
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px;">
+    <div class="card" style="text-align:center;padding:14px;">
+      <div style="color:var(--tx3);font-size:9px;margin-bottom:4px;">プレイヤー</div>
+      <div id="st-pl" style="color:var(--gold);font-size:22px;font-weight:bold;">—</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px;">
+      <div style="color:var(--tx3);font-size:9px;margin-bottom:4px;">出品中</div>
+      <div id="st-mk" style="color:var(--ac);font-size:22px;font-weight:bold;">—</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px;">
+      <div style="color:var(--tx3);font-size:9px;margin-bottom:4px;">コード</div>
+      <div id="st-cd" style="color:var(--gr);font-size:22px;font-weight:bold;">—</div>
+    </div>
+    <div class="card" style="text-align:center;padding:14px;">
+      <div style="color:var(--tx3);font-size:9px;margin-bottom:4px;">チートログ</div>
+      <div id="st-ac" style="color:var(--rd);font-size:22px;font-weight:bold;">—</div>
+    </div>
+  </div>
+  <button class="btn-go" onclick="loadStats()" style="padding:6px 14px;">🔄 統計更新</button>
+</div>
+
+<!-- モンスター画像 -->
+<div class="panel" id="p-monsters">
+  <div class="ptitle">👾 モンスター画像管理</div>
+  <div class="psub">クリックして画像を変更 → Supabase Storageに自動アップロード</div>
+  <div class="fbar" id="mFbar"></div>
+  <div class="img-grid" id="mGrid"></div>
+</div>
+
+<!-- キャラクター -->
+<div class="panel" id="p-characters">
+  <div class="ptitle">🧙 キャラクター画像管理</div>
+  <div class="psub">各職業の静止画スプライト（[job]_idle.png）</div>
+  <div class="img-grid" id="cGrid"></div>
+</div>
+
+<!-- モーション -->
+<div class="panel" id="p-motions">
+  <div class="ptitle">🏃 キャラクターモーション管理</div>
+  <div class="psub">スプライトシート形式。1フレーム=48×64px を横に並べたPNG</div>
+  <div class="card">
+    <h3>📋 モーション仕様</h3>
+    <table class="tbl">
+      <thead><tr><th>モーション</th><th>ファイル名</th><th>フレーム</th><th>FPS</th><th>サイズ</th></tr></thead>
+      <tbody>
+        <tr><td>idle 待機</td><td>[job]_idle.png</td><td>4</td><td>4</td><td>192×64</td></tr>
+        <tr><td>run 走り</td><td>[job]_run.png</td><td>6</td><td>12</td><td>288×64</td></tr>
+        <tr><td>jump 上昇</td><td>[job]_jump.png</td><td>3</td><td>8</td><td>144×64</td></tr>
+        <tr><td>fall 落下</td><td>[job]_fall.png</td><td>2</td><td>4</td><td>96×64</td></tr>
+        <tr><td>attack 攻撃</td><td>[job]_attack.png</td><td>5</td><td>15</td><td>240×64</td></tr>
+        <tr><td>skill スキル</td><td>[job]_skill.png</td><td>6</td><td>18</td><td>288×64</td></tr>
+        <tr><td>dead 死亡</td><td>[job]_dead.png</td><td>4</td><td>6</td><td>192×64</td></tr>
+        <tr><td>reborn 転生</td><td>[job]_reborn.png</td><td>8</td><td>10</td><td>384×64</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="color:var(--tx3);font-size:10px;margin-bottom:8px;">職業を選択:</div>
+  <div class="fbar" id="jFbar"></div>
+  <div style="color:var(--tx3);font-size:10px;margin:8px 0;">選択中: <span id="jSel" style="color:var(--gold)">novice</span></div>
+  <div class="img-grid" id="moGrid" style="grid-template-columns:repeat(auto-fill,minmax(140px,1fr));"></div>
+</div>
+
+<!-- アイテム画像 -->
+<div class="panel" id="p-items">
+  <div class="ptitle">⚔️ アイテム・装備画像管理</div>
+  <div class="psub">装備・消耗品アイコン（32×32px）</div>
+  <div class="img-grid" id="iGrid"></div>
+</div>
+
+<!-- UIテーマ -->
+<div class="panel" id="p-themes">
+  <div class="ptitle">🎨 UIテーマ管理</div>
+  <div class="psub">テーマ画像の変更とSupabase登録</div>
+  <div class="card">
+    <h3>📤 テーマ一括登録</h3>
+    <button class="btn-ac" onclick="registerThemes()">📤 全テーマ登録/更新</button>
+    <span id="themeRegMsg" style="font-size:11px;margin-left:10px;"></span>
+  </div>
+  <div class="card">
+    <h3>🖼 テーマ画像変更</h3>
+    <div class="fbar" id="tFbar"></div>
+    <div style="color:var(--tx3);font-size:10px;margin:6px 0 10px;">選択中: <span id="tSel" style="color:var(--gold)">maple_classic</span></div>
+    <div class="img-grid" id="thGrid" style="grid-template-columns:repeat(auto-fill,minmax(130px,1fr));"></div>
+  </div>
+  <div class="card">
+    <h3>📋 登録済みテーマ</h3>
+    <table class="tbl"><thead><tr><th>ID</th><th>名前</th><th>価格</th><th>状態</th><th></th></tr></thead>
+    <tbody id="themeTbl"></tbody></table>
+    <button class="btn-go" style="margin-top:8px;padding:5px 12px;" onclick="loadThemes()">🔄</button>
+  </div>
+</div>
+
+<!-- コード発行 -->
+<div class="panel" id="p-codes">
+  <div class="ptitle">🎁 ギフトコード管理</div>
+  <div class="psub">プレイヤーへのギフトコードを発行・管理します</div>
+  <div class="card">
+    <h3>✨ 新規発行</h3>
+    <div class="row"><span class="lbl">コード文字列</span>
+      <input class="inp" id="cCode" placeholder="空欄で自動生成">
+      <button class="btn-go" onclick="autoCode()" style="padding:6px 10px;">🎲</button>
+    </div>
+    <div class="row"><span class="lbl">種類</span>
+      <select class="inp md" id="cType">
+        <option value="crystal">💎 Crystal</option>
+        <option value="meso">🪙 メソ</option>
+        <option value="potion">🧪 ポーション</option>
+        <option value="weapon">⚔️ 武器</option>
+        <option value="armor">🥋 防具</option>
+      </select>
+    </div>
+    <div class="row"><span class="lbl">数量</span><input class="inp sm" id="cQty" type="number" value="500" min="1"></div>
+    <div class="row"><span class="lbl">アイテム名</span><input class="inp" id="cName" placeholder="Crystal x500"></div>
+    <button class="btn-ac" onclick="issueCode()">🎁 発行</button>
+    <div id="cResult" style="margin-top:10px;"></div>
+  </div>
+  <div class="card">
+    <h3>📋 発行済みコード</h3>
+    <table class="tbl"><thead><tr><th>コード</th><th>種類</th><th>数量</th><th>使用者</th><th>日付</th><th></th></tr></thead>
+    <tbody id="codeTbl"></tbody></table>
+    <button class="btn-go" style="margin-top:8px;padding:5px 12px;" onclick="loadCodes()">🔄</button>
+  </div>
+</div>
+
+<!-- プレイヤー -->
+<div class="panel" id="p-players">
+  <div class="ptitle">👥 プレイヤー管理</div>
+  <div class="psub">プレイヤーの確認・BAN</div>
+  <div class="card" style="padding:12px;">
+    <div class="row">
+      <input class="inp" id="pQ" placeholder="名前で検索...">
+      <button class="btn-ac" onclick="searchP()" style="padding:6px 12px;">🔍</button>
+      <button class="btn-go" onclick="loadPlayers()" style="padding:6px 12px;">全件</button>
+    </div>
+  </div>
+  <div class="card">
+    <table class="tbl"><thead><tr><th>名前</th><th>職業</th><th>Lv</th><th>転生</th><th>メソ</th><th>マップ</th><th>更新</th><th></th></tr></thead>
+    <tbody id="playerTbl"></tbody></table>
+  </div>
+</div>
+
+<!-- マーケット -->
+<div class="panel" id="p-market">
+  <div class="ptitle">🏪 マーケット管理</div>
+  <div class="psub">出品中のアイテムを管理します</div>
+  <div class="card">
+    <div class="row">
+      <button class="btn-go" onclick="loadListings()" style="padding:6px 12px;">🔄 更新</button>
+      <button class="btn-rd" onclick="clearExpired()" style="padding:6px 12px;">🗑 期限切れ削除</button>
+    </div>
+    <table class="tbl" style="margin-top:10px;"><thead><tr><th>アイテム</th><th>出品者</th><th>価格</th><th>通貨</th><th>ゾーン</th><th>状態</th><th>期限</th></tr></thead>
+    <tbody id="mkTbl"></tbody></table>
+  </div>
+</div>
+
+<!-- チートログ -->
+<div class="panel" id="p-ac">
+  <div class="ptitle">🛡 チート対策ログ</div>
+  <div class="psub">不正行為の検出ログ</div>
+  <div class="card">
+    <div class="row">
+      <button class="btn-go" onclick="loadAC()" style="padding:6px 12px;">🔄 更新</button>
+      <button class="btn-rd" onclick="clearAC()" style="padding:6px 12px;">🗑 全削除</button>
+    </div>
+    <table class="tbl" style="margin-top:10px;"><thead><tr><th>日時</th><th>プレイヤー</th><th>Lv</th><th>違反種別</th><th>詳細</th></tr></thead>
+    <tbody id="acTbl"></tbody></table>
+  </div>
+</div>
+
+<!-- モンスター追加 -->
+<div class="panel" id="p-add_monster">
+  <div class="ptitle">➕ モンスター追加コード生成</div>
+  <div class="psub">monster_data.js と zone_monster_table.js に追記するコードを生成します</div>
+  <div class="card">
+    <div class="row"><span class="lbl">ID（英数字_）</span><input class="inp" id="am_id" placeholder="new_slime"></div>
+    <div class="row"><span class="lbl">表示名</span><input class="inp" id="am_name" placeholder="ニュースライム"></div>
+    <div class="row"><span class="lbl">HP</span><input class="inp sm" id="am_hp" type="number" value="100"></div>
+    <div class="row"><span class="lbl">ATK</span><input class="inp sm" id="am_atk" type="number" value="15"></div>
+    <div class="row"><span class="lbl">EXP</span><input class="inp sm" id="am_exp" type="number" value="30"></div>
+    <div class="row"><span class="lbl">メソ最小</span><input class="inp sm" id="am_m1" type="number" value="10"></div>
+    <div class="row"><span class="lbl">メソ最大</span><input class="inp sm" id="am_m2" type="number" value="50"></div>
+    <div class="row"><span class="lbl">耐性</span>
+      <select class="inp md" id="am_res">
+        <option value="balanced">balanced（等倍）</option><option value="plant">plant（植物）</option>
+        <option value="rock">rock（岩石）</option><option value="undead">undead（不死）</option>
+        <option value="flying">flying（飛行）</option><option value="aquatic">aquatic（水生）</option>
+        <option value="armored">armored（重装）</option><option value="fire">fire（炎）</option>
+        <option value="ice">ice（氷）</option><option value="spirit">spirit（霊）</option>
+        <option value="mechanical">mechanical（機械）</option><option value="dragon">dragon（龍）</option>
+        <option value="dark">dark（闇）</option>
+      </select>
+    </div>
+    <div class="row"><span class="lbl">カラー</span><input class="inp sm" id="am_color" value="#4c4"></div>
+    <div class="row"><span class="lbl">大型(48px)</span><input type="checkbox" id="am_large" style="width:16px;height:16px;"></div>
+    <div class="row"><span class="lbl">ボス</span><input type="checkbox" id="am_boss" style="width:16px;height:16px;"></div>
+    <div class="row"><span class="lbl">ゾーン</span><input class="inp sm" id="am_zone" placeholder="z01"></div>
+    <div class="row"><span class="lbl">出現マップ</span><input class="inp" id="am_map" placeholder="z01_m01,z01_m02"></div>
+    <div class="row"><span class="lbl">ウェイト</span><input class="inp sm" id="am_w" type="number" value="30"></div>
+    <button class="btn-gr" onclick="genMonster()">📋 コード生成</button>
+  </div>
+  <div class="card" id="am_res_card" style="display:none;">
+    <h3>① monster_data.js の MONSTER_DATA 内に追記</h3>
+    <div class="code" id="am_c1"></div>
+    <button class="btn-go" style="margin-top:6px;padding:5px 12px;" onclick="cp('am_c1')">📋 コピー</button>
+    <h3 style="margin-top:12px;">② zone_monster_table.js の該当マップに追記</h3>
+    <div class="code" id="am_c2"></div>
+    <button class="btn-go" style="margin-top:6px;padding:5px 12px;" onclick="cp('am_c2')">📋 コピー</button>
+    <div style="color:var(--tx3);font-size:10px;margin-top:8px;">画像: assets/monsters/<span id="am_fn"></span>.png を配置してください</div>
+  </div>
+</div>
+
+<!-- アイテム追加 -->
+<div class="panel" id="p-add_item">
+  <div class="ptitle">➕ アイテム追加コード生成</div>
+  <div class="card">
+    <div class="row"><span class="lbl">ID</span><input class="inp" id="ai_id" placeholder="sword_new_rare"></div>
+    <div class="row"><span class="lbl">名前</span><input class="inp" id="ai_name" placeholder="新しい剣"></div>
+    <div class="row"><span class="lbl">スロット</span>
+      <select class="inp md" id="ai_slot">
+        <option value="mainhand">mainhand（メイン）</option><option value="offhand">offhand（サブ）</option>
+        <option value="helmet">helmet（兜）</option><option value="armor">armor（鎧）</option>
+        <option value="gloves">gloves（手袋）</option><option value="boots">boots（靴）</option>
+        <option value="cape">cape（マント）</option><option value="belt">belt（ベルト）</option>
+        <option value="ring">ring（指輪）</option><option value="necklace">necklace（首輪）</option>
+        <option value="">消耗品</option>
+      </select>
+    </div>
+    <div class="row"><span class="lbl">カテゴリ</span>
+      <select class="inp md" id="ai_cat"><option value="斬">斬</option><option value="殴">殴</option><option value="突">突</option><option value="撃">撃</option><option value="無">無</option></select>
+    </div>
+    <div class="row"><span class="lbl">ATK</span><input class="inp sm" id="ai_atk" type="number" value="50"></div>
+    <div class="row"><span class="lbl">DEF</span><input class="inp sm" id="ai_def" type="number" value="0"></div>
+    <div class="row"><span class="lbl">レアリティ</span>
+      <select class="inp md" id="ai_rar"><option value="Common">Common</option><option value="Uncommon">Uncommon</option><option value="Rare" selected>Rare</option><option value="Epic">Epic</option><option value="Legendary">Legendary</option></select>
+    </div>
+    <div class="row"><span class="lbl">推奨Lv</span><input class="inp sm" id="ai_lv" type="number" value="1"></div>
+    <button class="btn-gr" onclick="genItem()">📋 コード生成</button>
+  </div>
+  <div class="card" id="ai_res" style="display:none;">
+    <div class="code" id="ai_c"></div>
+    <button class="btn-go" style="margin-top:6px;padding:5px 12px;" onclick="cp('ai_c')">📋 コピー</button>
+    <div style="color:var(--tx3);font-size:10px;margin-top:6px;">画像: assets/equipment/<span id="ai_fn"></span>.png を配置してください</div>
+  </div>
+</div>
+
+<!-- マップ追加 -->
+<div class="panel" id="p-add_map">
+  <div class="ptitle">➕ マップ追加コード生成</div>
+  <div class="card">
+    <div class="row"><span class="lbl">マップID</span><input class="inp" id="ap_id" placeholder="z26_m01"></div>
+    <div class="row"><span class="lbl">マップ名</span><input class="inp" id="ap_name" placeholder="New Area"></div>
+    <div class="row"><span class="lbl">ゾーン名</span><input class="inp" id="ap_zone" placeholder="New Zone"></div>
+    <div class="row"><span class="lbl">推奨Lv 最小</span><input class="inp sm" id="ap_lv1" type="number" value="1"></div>
+    <div class="row"><span class="lbl">推奨Lv 最大</span><input class="inp sm" id="ap_lv2" type="number" value="30"></div>
+    <div class="row"><span class="lbl">背景</span>
+      <select class="inp md" id="ap_bg"><option value="forest">forest</option><option value="cave">cave</option><option value="snow">snow</option><option value="volcano">volcano</option><option value="ocean">ocean</option><option value="city">city</option><option value="sky">sky</option><option value="desert">desert</option><option value="dream">dream</option><option value="void">void</option></select>
+    </div>
+    <div class="row"><span class="lbl">マップ幅px</span><input class="inp sm" id="ap_w" type="number" value="3200"></div>
+    <div class="row"><span class="lbl">接続元</span><input class="inp" id="ap_from" placeholder="z26_safe"></div>
+    <div class="row"><span class="lbl">接続先</span><input class="inp" id="ap_to" placeholder="z26_m02"></div>
+    <div class="row"><span class="lbl">セーフゾーン</span><input type="checkbox" id="ap_safe" style="width:16px;height:16px;"></div>
+    <div class="row"><span class="lbl">ボス部屋</span><input type="checkbox" id="ap_boss" style="width:16px;height:16px;"></div>
+    <button class="btn-gr" onclick="genMap()">📋 コード生成</button>
+  </div>
+  <div class="card" id="ap_res" style="display:none;">
+    <h3>① map_data.js の MAP_DATA 内に追記</h3>
+    <div class="code" id="ap_c1"></div>
+    <button class="btn-go" style="margin-top:6px;padding:5px 12px;" onclick="cp('ap_c1')">📋 コピー</button>
+    <h3 style="margin-top:12px;">② zone_monster_table.js に追記</h3>
+    <div class="code" id="ap_c2"></div>
+    <button class="btn-go" style="margin-top:6px;padding:5px 12px;" onclick="cp('ap_c2')">📋 コピー</button>
+  </div>
+</div>
+
+<!-- 職業追加 -->
+<div class="panel" id="p-add_job">
+  <div class="ptitle">➕ 職業追加コード生成</div>
+  <div class="card">
+    <div class="row"><span class="lbl">職業名（英語）</span><input class="inp" id="aj_id" placeholder="NewClass"></div>
+    <div class="row"><span class="lbl">段階</span>
+      <select class="inp md" id="aj_tier"><option value="30">2nd Lv30</option><option value="80">3rd Lv80</option><option value="180">4th Lv180</option><option value="400">5th Lv400</option><option value="800">6th Lv800</option></select>
+    </div>
+    <div class="row"><span class="lbl">転職元</span><input class="inp" id="aj_prev" placeholder="Fighter"></div>
+    <div class="row"><span class="lbl">スキル1</span><input class="inp" id="aj_s1" placeholder="power_smash"></div>
+    <div class="row"><span class="lbl">スキル2</span><input class="inp" id="aj_s2" placeholder="shield_bash"></div>
+    <div class="row"><span class="lbl">スキル3</span><input class="inp" id="aj_s3" placeholder="war_cry"></div>
+    <div class="row"><span class="lbl">スキル4</span><input class="inp" id="aj_s4" placeholder="roll"></div>
+    <button class="btn-gr" onclick="genJob()">📋 コード生成</button>
+  </div>
+  <div class="card" id="aj_res" style="display:none;">
+    <div class="code" id="aj_c"></div>
+    <button class="btn-go" style="margin-top:6px;padding:5px 12px;" onclick="cp('aj_c')">📋 コピー</button>
+    <div style="color:var(--tx3);font-size:10px;margin-top:6px;">画像: assets/characters/<span id="aj_fn"></span>_idle.png を配置</div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /layout -->
+
+<script>
+// ================================================================
+// ★ ここにSupabaseの接続情報を入れてください
+// ================================================================
+const SUPABASE_URL = 'https://uwcjlkmlbtukrhicrxgp.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV3Y2psa21sYnR1a3JoaWNyeGdwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMDQzNjUsImV4cCI6MjA5MDY4MDM2NX0._Btz2un2bJxCZsDD8mgbUX2aQxXC3WsX_99xNoSU5y4';  // 例: eyJhbGci...
+// ================================================================
+
+// Supabaseを直接importして使う（CDN不要）
+const SUPABASE_CDN = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js';
+
+let sb = null;
+
+// ── Supabase動的ロード ──
+let SB_STORAGE_URL = ''; // 接続後に設定
+
+function loadSupabase(cb) {
+  if (window.supabase) { cb(); return; }
+  const s = document.createElement('script');
+  s.src = SUPABASE_CDN;
+  s.onload  = cb;
+  s.onerror = () => {
+    toast('❌ CDN読み込み失敗。ネット接続を確認してください');
+    document.getElementById('connectBtn').textContent = '🔗 接続';
+    document.getElementById('connectBtn').disabled = false;
+    dot('err'); stxt('CDNエラー');
+  };
+  document.head.appendChild(s);
+}
+
+// ── 接続 ──
+function connect() {
+  const url = document.getElementById('tUrl').value.trim();
+  const key = document.getElementById('tKey').value.trim();
+  if (!url) { toast('❌ URLを入力してください'); document.getElementById('tUrl').focus(); return; }
+  if (!key) { toast('❌ Keyを入力してください'); document.getElementById('tKey').focus(); return; }
+  document.getElementById('connectBtn').textContent = '接続中...';
+  document.getElementById('connectBtn').disabled = true;
+  loadSupabase(() => {
+    try {
+      sb = window.supabase.createClient(url, key);
+      localStorage.setItem('altera_admin_url', url);
+      localStorage.setItem('altera_admin_key', key);
+      testConn();
+    } catch(e) {
+      dot('err'); stxt('エラー');
+      document.getElementById('connectBtn').textContent = '🔗 接続';
+      document.getElementById('connectBtn').disabled = false;
+      toast('❌ ' + e.message);
+    }
+  });
+}
+
+async function testConn() {
+  try {
+    const { error } = await sb.from('mmo_players').select('id').limit(1);
+    if (error) throw error;
+    dot('ok'); stxt('接続OK');
+    document.getElementById('connectBtn').textContent = '✅ 接続済';
+    document.getElementById('connectBtn').style.background = 'var(--gr)';
+    // Supabase StorageのベースURLを設定（画像プレビュー用）
+    const sbUrl = localStorage.getItem('altera_admin_url') || '';
+    SB_STORAGE_URL = sbUrl + '/storage/v1/object/public/assets/';
+    toast('✅ Supabase接続成功！');
+    loadStats();
+  } catch(e) {
+    dot('err'); stxt('接続失敗');
+    document.getElementById('connectBtn').textContent = '🔗 再接続';
+    document.getElementById('connectBtn').disabled = false;
+    toast('❌ ' + e.message);
+  }
+}
+
+function dot(cls) { document.getElementById('dot').className = 'dot ' + cls; }
+function stxt(s)   { document.getElementById('stxt').textContent = s; }
+
+// ── 起動時に保存済み情報で自動接続 ──
+window.addEventListener('DOMContentLoaded', () => {
+  // ハードコードされたキーを優先、なければlocalStorageから
+  const hardUrl = (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL !== 'YOUR_SUPABASE_URL') ? SUPABASE_URL : '';
+  const hardKey = (typeof SUPABASE_KEY !== 'undefined' && SUPABASE_KEY !== 'YOUR_SUPABASE_ANON_KEY') ? SUPABASE_KEY : '';
+  const url = hardUrl || localStorage.getItem('altera_admin_url') || '';
+  const key = hardKey || localStorage.getItem('altera_admin_key') || '';
+  if (url) document.getElementById('tUrl').value = url;
+  if (key) document.getElementById('tKey').value = key;
+  if (url && key) {
+    loadSupabase(() => {
+      try {
+        sb = window.supabase.createClient(url, key);
+        testConn();
+      } catch(e) { /* 無視 */ }
+    });
+  }
+  // モンスターフィルター構築
+  buildMFilter();
+  buildThemeFilter();
+  buildJobFilter();
+});
+
+// ── NAV ──
+function nav(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('on'));
+  document.getElementById('p-' + id)?.classList.add('on');
+  document.querySelectorAll('.nav-btn').forEach(b => {
+    if (b.getAttribute('onclick')?.includes("'" + id + "'")) b.classList.add('on');
+  });
+  const loaders = {
+    monsters: () => buildGrid('mGrid', 'monsters', _filteredMonsters || MONSTERS),
+    characters: () => buildGrid('cGrid', 'characters', JOBS, id => id + '_idle'),
+    motions: () => buildMotionGrid(_selJob),
+    items: () => buildGrid('iGrid', 'equipment', ITEMS),
+    themes: () => { buildThemeGrid(_selTheme); loadThemes(); },
+    codes: loadCodes, players: loadPlayers,
+    market: loadListings, ac: loadAC,
+  };
+  if (loaders[id]) loaders[id]();
+}
+
+// ── データ ──
+const MONSTERS = ["sproutling", "vine_crawler", "bark_golem", "petal_fairy", "mushfolk", "thorn_beetle", "leaf_wraith", "mossbear_cub", "spore_puffer", "dew_serpent", "rootmother_gaia", "cave_bat", "crystal_beetle", "stone_imp", "gem_crawler", "shadow_rat", "blind_salamander", "fossil_knight", "glowshroom", "iron_mole", "cave_troll", "ironshell_dreadcrab", "snow_fox", "ice_sprite", "frost_golem", "penguin_warrior", "blizzard_wolf", "icicle_bat", "snowfield_yeti", "cryo_beetle", "permafrost_wraith", "glacial_serpent", "glacius_eternal", "fire_imp", "magma_hound", "obsidian_knight", "fire_lizard", "ember_sprite", "lava_crab", "cinder_golem", "fire_drake", "ashfield_vulture", "forge_demon", "magmalore_undying", "sea_urchin", "starfish_crawler", "jellyfish", "anglerfish", "electric_eel", "deep_shark", "crab_knight", "ghost_sailor", "coral_serpent", "abyss_lurker", "leviathon_rex", "street_thug", "guard_drone", "shadow_assassin", "gargoyle", "mech_rat", "bomb_drone", "elite_guard", "turret_bot", "cyber_hound", "neon_phantom", "director_null", "bog_frog", "swamp_leech", "miasma_wisp", "mud_golem", "vine_snake", "plague_rat", "dead_treant", "bog_witch", "swamp_turtle", "decay_sprite", "swampmother_murassa", "wind_sprite", "storm_hawk", "cloud_jellyfish", "gale_serpent", "thunder_imp", "sky_golem", "cyclone_bat", "stratos_knight", "wind_elemental", "nimbus_wraith", "stormking_vaelthor", "skeleton_archer", "zombie_walker", "ghost_knight", "bone_golem", "crypt_bat", "lich_apprentice", "mummy", "revenant", "shadow_specter", "mini_bone_dragon", "skullking_mortavus", "prism_shard", "crystal_golem2", "gem_fairy", "amethyst_crawler", "ruby_beetle", "sapphire_wraith", "diamond_knight", "topaz_imp", "void_shard", "crystal_spider", "crystalwyrm_prismos", "jungle_raptor", "poison_dart_frog", "camouflage_panther", "vine_choker", "giant_centipede", "idol_guardian", "jungle_witch_doctor", "river_croc", "shrieking_bat", "alpha_raptor", "jungle_overlord_xalath", "depth_crawler", "pressure_phantom", "void_angler", "biolume_jellyfish", "abyss_shark", "mind_leech", "colossus_crab", "tentacle_horror", "null_wraith", "deep_one", "abyssal_sovereign_xorgoth", "sand_scorpion", "desert_viper", "dune_beetle", "mirage_phantom", "sand_golem", "tomb_guardian", "scarab_swarm", "sandstorm_elemental", "mummy_pharaoh", "desert_djinn", "desert_lich_solarius", "assembly_drone", "gear_golem", "plasma_turret", "overclock_imp", "prototype_hunter", "steam_golem", "bomb_bot", "arc_welder", "shield_mech", "core_sentinel", "omega_unit_zero", "thought_wisp", "illusion_copy", "nightmare_shade", "dream_eater", "memory_ghost", "fractal_serpent", "pastel_golem", "mirror_knight", "void_dreamer", "subconscious_horror", "dreamweaver_somnara", "thorn_boar", "bandit_scout", "vulture", "dust_golem", "rattlesnake", "outlaw_gunner", "rock_crab", "cactus_sentry", "sand_wraith", "fossil_beast", "bandit_king_redjack", "star_sprite", "void_crawler", "comet_hound", "nebula_wraith", "gravity_golem", "nova_imp", "star_drake", "constellation_knight", "void_tyrant", "singularity_shade", "celestial_arbiter_astreon", "giant_mushroom", "root_tendril", "spore_cloud", "fungal_zombie", "root_golem", "bloom_horror", "undergarden_queen_floraxis", "frost_wolf", "wendigo_scout", "frozen_undead", "cryo_mage", "wendigo_king_boreas", "magma_elemental", "fire_giant_scout", "inferno_knight", "forge_god_ignarath", "living_book", "ink_specter", "tome_guardian", "grand_archivist_lexaron", "highland_wolf", "sunstone_golem", "cliff_troll", "highland_warden_auros", "void_shard2", "reality_tear", "entropy_wraith", "void_sovereign_erathis", "vampire_scout", "blood_knight", "bone_colossus", "vampire_lord_vaerath", "elite_sproutling", "elite_fossil_knight", "elite_director_null", "altera_world_soul", "event_guardian", "event_guardian_hard"];
+const JOBS     = ["novice", "warrior", "fighter", "acolyte", "rogue", "apprentice", "knight", "berserker", "monk", "cleric", "assassin", "duelist", "mage", "ranger", "paladin", "warlord", "grandmonk", "shadowboxer", "shadowlord", "phantom", "archmage", "elementalist", "sniper", "stormarcher"];
+const ITEMS    = ["sword_common", "sword_rare", "sword_legendary", "mace_common", "hammer_epic", "spear_common", "dagger_rare", "bow_common", "staff_rare", "staff_legendary", "helmet_common", "helmet_epic", "armor_common", "armor_rare", "armor_legendary", "boots_common", "boots_rare", "gloves_common", "ring_rare", "ring_legendary", "necklace_rare", "cape_common", "belt_common", "trial_helm", "trial_armor", "trial_boots", "trial_blade", "hp_potion_s", "hp_potion_m", "mp_potion_s", "elixir", "repair_scroll"];
+const THEMES   = ["maple_classic", "neon_cyber", "fantasy_gold", "dark_souls", "pastel_dream", "pixel_retro", "sakura", "void_theme", "ocean_deep", "altera_default"];
+const TPARTS   = ["hp_bar", "mp_bar", "exp_bar", "hotbar_slot", "hotbar_bg", "chat_bg", "minimap_frame", "damage_font", "levelup_fx", "safe_zone_bg"];
+const TLABELS  = {"maple_classic": "\ud83c\udf41 Maple Classic", "neon_cyber": "\ud83c\udf06 Neon Cyber", "fantasy_gold": "\u2694\ufe0f Fantasy Gold", "dark_souls": "\ud83d\udd25 Dark Souls", "pastel_dream": "\ud83c\udf38 Pastel Dream", "pixel_retro": "\ud83d\udc7e Pixel Retro", "sakura": "\ud83c\udf38 \u685c Sakura", "void_theme": "\ud83c\udf0c Void", "ocean_deep": "\ud83c\udf0a Ocean Deep", "altera_default": "\u2b50 Altera Default"};
+const MOTIONS  = ["idle", "run", "jump", "fall", "attack", "skill", "dead", "reborn"];
+
+const MOTION_FRAMES = {idle:4,run:6,jump:3,fall:2,attack:5,skill:6,dead:4,reborn:8};
+const MOTION_TOTAL  = {idle:'192x64',run:'288x64',jump:'144x64',fall:'96x64',attack:'240x64',skill:'288x64',dead:'192x64',reborn:'384x64'};
+
+// ゾーン別モンスター
+const ZONE_M = {
+  z01:MONSTERS.slice(0,11),z02:MONSTERS.slice(11,22),z03:MONSTERS.slice(22,33),
+  z04:MONSTERS.slice(33,44),z05:MONSTERS.slice(44,55),z06:MONSTERS.slice(55,66),
+  z07:MONSTERS.slice(66,77),z08:MONSTERS.slice(77,88),z09:MONSTERS.slice(88,99),
+  z10:MONSTERS.slice(99,110),z11:MONSTERS.slice(110,121),z12:MONSTERS.slice(121,132),
+  z13:MONSTERS.slice(132,143),z14:MONSTERS.slice(143,154),z15:MONSTERS.slice(154,165),
+  z16:MONSTERS.slice(165,176),z17:MONSTERS.slice(176,187),
+  z18:['giant_mushroom','root_tendril','spore_cloud','fungal_zombie','root_golem','bloom_horror','undergarden_queen_floraxis'],
+  z19:['frost_wolf','wendigo_scout','frozen_undead','cryo_mage','wendigo_king_boreas'],
+  z20:['magma_elemental','fire_giant_scout','inferno_knight','forge_god_ignarath'],
+  z21:['living_book','ink_specter','tome_guardian','grand_archivist_lexaron'],
+  z22:['highland_wolf','sunstone_golem','cliff_troll','highland_warden_auros'],
+  z23:['void_shard2','reality_tear','entropy_wraith','void_sovereign_erathis'],
+  z24:['vampire_scout','blood_knight','bone_colossus','vampire_lord_vaerath'],
+  z25:['elite_sproutling','elite_fossil_knight','elite_director_null','altera_world_soul'],
+  ev:['event_guardian','event_guardian_hard'],
+};
+
+let _filteredMonsters = null;
+let _selJob   = 'novice';
+let _selTheme = 'maple_classic';
+
+// ── 統計 ──
+async function loadStats() {
+  if (!sb) return;
+  const pairs = [['mmo_players','st-pl'],['mmo_market_listings','st-mk'],['mmo_codes','st-cd'],['mmo_anticheat_log','st-ac']];
+  for (const [tbl, id] of pairs) {
+    const { count } = await sb.from(tbl).select('*', { count:'exact', head:true });
+    const el = document.getElementById(id);
+    if (el) el.textContent = count ?? '?';
+  }
+}
+
+// ── 画像グリッド ──
+function buildGrid(gridId, folder, ids, nameFn) {
+  const grid = document.getElementById(gridId);
+  if (!grid) return;
+  grid.innerHTML = ids.map(id => {
+    const fname = (nameFn ? nameFn(id) : id) + '.png';
+    const imgSrc = SB_STORAGE_URL ? SB_STORAGE_URL + folder + '/' + fname : '../assets/' + folder + '/' + fname;
+    return `<div class="icard" id="ic_${id}" onclick="pickImg('${id}','${folder}','${nameFn ? nameFn(id) : id}')">
+      <img src="${imgSrc}" onerror="this.style.opacity='.2'" id="ii_${id}" alt="${id}">
+      <input type="file" accept="image/png,image/gif,image/webp" id="if_${id}"
+        onchange="handleImg('${id}','${folder}','${nameFn ? nameFn(id) : id}',this)">
+      <div class="nm" title="${id}">${id}</div>
+    </div>`;
+  }).join('');
+  ids.forEach(id => {
+    const img = document.getElementById('ii_' + id);
+    if (img) img.onload = () => document.getElementById('ic_' + id)?.classList.add('ok');
+  });
+}
+
+function pickImg(id, folder, fname) { document.getElementById('if_' + id)?.click(); }
+
+function handleImg(id, folder, fname, input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('ii_' + id);
+    if (img) { img.src = e.target.result; img.style.opacity = '1'; }
+    document.getElementById('ic_' + id)?.classList.add('upd');
+    toast('🖼 ' + fname + '.png プレビュー更新');
+    if (sb) uploadAsset(folder + '/' + fname + '.png', file);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function uploadAsset(path, file) {
+  if (!sb) { toast('❌ 先に接続してください'); return; }
+  try {
+    const { error } = await sb.storage.from('assets').upload(path, file, { upsert: true });
+    if (error) throw error;
+    toast('✅ アップロード完了: ' + path);
+  } catch(e) { toast('❌ ' + e.message); }
+}
+
+// ── モンスターフィルター ──
+function buildMFilter() {
+  const bar = document.getElementById('mFbar');
+  if (!bar) return;
+  const zones = ['全て',...Object.keys(ZONE_M).map(z=>z.toUpperCase())];
+  bar.innerHTML = zones.map((z,i) =>
+    `<button class="fbtn${i===0?' on':''}" onclick="filterM('${z}')">${z}</button>`
+  ).join('');
+}
+
+function filterM(zone) {
+  document.querySelectorAll('#mFbar .fbtn').forEach(b =>
+    b.classList.toggle('on', b.textContent === zone));
+  _filteredMonsters = zone === '全て' ? MONSTERS : (ZONE_M[zone.toLowerCase()] || MONSTERS);
+  buildGrid('mGrid', 'monsters', _filteredMonsters);
+}
+
+// ── モーショングリッド ──
+function buildJobFilter() {
+  const bar = document.getElementById('jFbar');
+  if (!bar) return;
+  bar.innerHTML = JOBS.map((j,i) =>
+    `<button class="fbtn${i===0?' on':''}" onclick="selJob('${j}')">${j}</button>`
+  ).join('');
+}
+
+function selJob(job) {
+  _selJob = job;
+  document.querySelectorAll('#jFbar .fbtn').forEach(b =>
+    b.classList.toggle('on', b.textContent === job));
+  document.getElementById('jSel').textContent = job;
+  buildMotionGrid(job);
+}
+
+function buildMotionGrid(job) {
+  const grid = document.getElementById('moGrid');
+  if (!grid) return;
+  grid.innerHTML = MOTIONS.map(m => {
+    const fname = job + '_' + m;
+    const frames = MOTION_FRAMES[m];
+    const total  = MOTION_TOTAL[m];
+    return `<div class="icard" id="mc_${m}" onclick="pickMotion('${m}')">
+      <div style="height:64px;background:#000;border-radius:2px;margin-bottom:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+        <img src="../assets/characters/${fname}.png"
+          onerror="this.style.display='none'"
+          id="mi_${m}" style="max-width:100%;max-height:100%;object-fit:contain;image-rendering:pixelated;">
+        <div id="mn_${m}" style="color:var(--tx3);font-size:9px;position:absolute;">未設定</div>
+      </div>
+      <input type="file" accept="image/png" id="mf_${m}"
+        onchange="handleMotion('${m}',this)">
+      <div style="color:var(--gold);font-size:10px;">${m}</div>
+      <div style="color:var(--tx3);font-size:8px;">${frames}f · ${total}px</div>
+    </div>`;
+  }).join('');
+  MOTIONS.forEach(m => {
+    const img = document.getElementById('mi_' + m);
+    const none = document.getElementById('mn_' + m);
+    if (!img) return;
+    img.onload  = () => { if(none) none.style.display='none'; document.getElementById('mc_'+m)?.classList.add('ok'); };
+    img.onerror = () => { if(none) none.style.display='block'; };
+  });
+}
+
+function pickMotion(m) { document.getElementById('mf_' + m)?.click(); }
+
+function handleMotion(m, input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('mi_' + m);
+    const none = document.getElementById('mn_' + m);
+    if (img)  { img.src = e.target.result; img.style.display = 'block'; }
+    if (none) none.style.display = 'none';
+    document.getElementById('mc_' + m)?.classList.add('upd');
+    toast('🏃 ' + _selJob + '_' + m + '.png 更新');
+    if (sb) uploadAsset('characters/' + _selJob + '_' + m + '.png', file);
+  };
+  reader.readAsDataURL(file);
+}
+
+// ── テーマ ──
+function buildThemeFilter() {
+  const bar = document.getElementById('tFbar');
+  if (!bar) return;
+  bar.innerHTML = THEMES.map((t,i) =>
+    `<button class="fbtn${i===0?' on':''}" onclick="selTheme('${t}')">${TLABELS[t]||t}</button>`
+  ).join('');
+}
+
+function selTheme(t) {
+  _selTheme = t;
+  document.querySelectorAll('#tFbar .fbtn').forEach(b =>
+    b.classList.toggle('on', b.getAttribute('onclick')?.includes("'"+t+"'")));
+  document.getElementById('tSel').textContent = TLABELS[t] || t;
+  buildThemeGrid(t);
+}
+
+function buildThemeGrid(theme) {
+  const grid = document.getElementById('thGrid');
+  if (!grid) return;
+  grid.innerHTML = TPARTS.map(p => {
+    const fname = theme + '_' + p;
+    return `<div class="icard" id="tc_${p}" onclick="pickTheme('${p}')">
+      <div style="height:56px;background:#000;border-radius:2px;margin-bottom:4px;overflow:hidden;display:flex;align-items:center;justify-content:center;">
+        <img src="../assets/themes/${fname}.png" onerror="this.style.display='none'"
+          id="ti_${p}" style="max-width:100%;max-height:100%;object-fit:contain;image-rendering:pixelated;">
+      </div>
+      <input type="file" accept="image/png" id="tf_${p}" onchange="handleTheme('${p}',this)">
+      <div class="nm">${p}</div>
+    </div>`;
+  }).join('');
+  TPARTS.forEach(p => {
+    const img = document.getElementById('ti_' + p);
+    if (img) img.onload = () => document.getElementById('tc_' + p)?.classList.add('ok');
+  });
+}
+
+function pickTheme(p) { document.getElementById('tf_' + p)?.click(); }
+
+function handleTheme(p, input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = document.getElementById('ti_' + p);
+    if (img) { img.src = e.target.result; img.style.display='block'; }
+    document.getElementById('tc_' + p)?.classList.add('upd');
+    toast('🎨 ' + _selTheme + '_' + p + '.png 更新');
+    if (sb) uploadAsset('themes/' + _selTheme + '_' + p + '.png', file);
+  };
+  reader.readAsDataURL(file);
+}
+
+async function registerThemes() {
+  if (!sb) { toast('❌ 先に接続してください'); return; }
+  const msg = document.getElementById('themeRegMsg');
+  msg.textContent = '登録中...';
+  const rows = [
+    {id:'altera_default',name:'Altera Original',price:0,sort:0},
+    {id:'maple_classic', name:'Maple Classic',  price:500,sort:1},
+    {id:'neon_cyber',    name:'Neon Cyber',      price:500,sort:2},
+    {id:'fantasy_gold',  name:'Fantasy Gold',    price:500,sort:3},
+    {id:'dark_souls',    name:'Dark Souls',      price:500,sort:4},
+    {id:'pastel_dream',  name:'Pastel Dream',    price:500,sort:5},
+    {id:'pixel_retro',   name:'Pixel Retro',     price:500,sort:6},
+    {id:'sakura',        name:'桜 Sakura',        price:600,sort:7},
+    {id:'void_theme',    name:'Void',             price:600,sort:8},
+    {id:'ocean_deep',    name:'Ocean Deep',       price:600,sort:9},
+  ];
+  let ok=0,err=0;
+  for (const r of rows) {
+    const {error} = await sb.from('mmo_ui_themes').upsert({
+      id:r.id,name:r.name,author:'Official',price:r.price,
+      is_official:true,is_active:true,sort_order:r.sort,
+      theme_data:{},updated_at:new Date().toISOString()
+    });
+    if (error) err++; else ok++;
+  }
+  msg.innerHTML = `<span style="color:var(--gr)">✅ ${ok}件登録</span>` + (err ? ` <span style="color:var(--rd)">❌ ${err}件エラー</span>` : '');
+  loadThemes();
+}
+
+async function loadThemes() {
+  if (!sb) return;
+  const {data} = await sb.from('mmo_ui_themes').select('*').order('sort_order');
+  const tb = document.getElementById('themeTbl');
+  if (!tb || !data) return;
+  tb.innerHTML = data.map(t => `<tr>
+    <td style="color:var(--tx3)">${t.id}</td>
+    <td style="color:var(--gold)">${t.name}</td>
+    <td>${t.price===0?'<span class="badge bgr">無料</span>':t.price+'💎'}</td>
+    <td>${t.is_active?'<span class="badge bgr">有効</span>':'<span class="badge bgx">無効</span>'}</td>
+    <td><button class="btn-go" style="padding:2px 8px;font-size:9px;" onclick="toggleTheme('${t.id}',${t.is_active})">${t.is_active?'無効化':'有効化'}</button></td>
+  </tr>`).join('');
+}
+
+async function toggleTheme(id, cur) {
+  await sb?.from('mmo_ui_themes').update({is_active:!cur}).eq('id',id);
+  loadThemes();
+}
+
+// ── コード ──
+function autoCode() {
+  const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let s='ALT-';
+  for(let i=0;i<8;i++) s+=c[Math.floor(Math.random()*c.length)];
+  document.getElementById('cCode').value = s;
+}
+
+async function issueCode() {
+  if (!sb) { toast('❌ 先に接続してください'); return; }
+  let code = document.getElementById('cCode').value.trim().toUpperCase();
+  if (!code) { autoCode(); code = document.getElementById('cCode').value; }
+  const type = document.getElementById('cType').value;
+  const qty  = parseInt(document.getElementById('cQty').value) || 500;
+  const name = document.getElementById('cName').value.trim() || type+' x'+qty;
+  const {error} = await sb.from('mmo_codes').insert({code,type,qty,item_name:name,created_by:'admin',created_at:new Date().toISOString()});
+  if (error) { toast('❌ '+error.message); return; }
+  document.getElementById('cResult').innerHTML = `
+    <div style="background:#000;border:1px solid var(--gr);border-radius:3px;padding:10px;margin-top:8px;">
+      <div style="color:var(--tx3);font-size:9px;margin-bottom:4px;">発行コード</div>
+      <div style="color:var(--gr);font-size:18px;letter-spacing:3px;font-weight:bold;">${code}</div>
+      <div style="color:var(--tx3);font-size:10px;margin-top:4px;">${name}</div>
+      <button class="btn-go" style="margin-top:6px;padding:3px 10px;font-size:9px;"
+        onclick="navigator.clipboard.writeText('${code}').then(()=>toast('📋 コピー'))">📋 コピー</button>
+    </div>`;
+  loadCodes(); toast('✅ コード発行: '+code);
+}
+
+async function loadCodes() {
+  if (!sb) return;
+  const {data} = await sb.from('mmo_codes').select('*').order('created_at',{ascending:false}).limit(100);
+  const tb = document.getElementById('codeTbl');
+  if (!tb||!data) return;
+  tb.innerHTML = data.map(c => `<tr>
+    <td style="color:var(--gold);letter-spacing:1px;">${c.code}</td>
+    <td>${c.type}</td><td>${c.qty}</td>
+    <td>${c.used_by_name?`<span class="badge bgr">${c.used_by_name}</span>`:'<span class="badge bgx">未使用</span>'}</td>
+    <td style="color:var(--tx3);font-size:9px;">${new Date(c.created_at).toLocaleDateString('ja-JP')}</td>
+    <td>${!c.used_by?`<button class="btn-rd" style="padding:2px 7px;font-size:9px;" onclick="delCode('${c.code}')">削除</button>`:''}</td>
+  </tr>`).join('');
+}
+
+async function delCode(code) {
+  if (!sb||!confirm(code+' を削除しますか？')) return;
+  await sb.from('mmo_codes').delete().eq('code',code);
+  loadCodes(); toast('🗑 削除');
+}
+
+// ── プレイヤー ──
+async function loadPlayers() {
+  if (!sb) return;
+  const {data} = await sb.from('mmo_players').select('*').order('level',{ascending:false}).limit(100);
+  renderPlayers(data||[]);
+}
+async function searchP() {
+  if (!sb) return;
+  const q = document.getElementById('pQ').value.trim();
+  const {data} = await sb.from('mmo_players').select('*').ilike('name','%'+q+'%').limit(50);
+  renderPlayers(data||[]);
+}
+function renderPlayers(data) {
+  const tb = document.getElementById('playerTbl');
+  if (!tb) return;
+  tb.innerHTML = data.map(p => `<tr>
+    <td>${p.name||'?'}</td>
+    <td style="color:var(--ac)">${p.job||'?'}</td>
+    <td style="color:var(--gold)">${p.level}</td>
+    <td>${(p.reborn_count||0)>0?'<span class="badge bgo">🌀'+p.reborn_count+'</span>':'—'}</td>
+    <td>${(p.meso||0).toLocaleString()}</td>
+    <td style="color:var(--tx3);font-size:10px;">${p.map_id||'?'}</td>
+    <td style="color:var(--tx3);font-size:9px;">${new Date(p.updated_at).toLocaleString('ja-JP')}</td>
+    <td><button class="btn-rd" style="padding:2px 7px;font-size:9px;" onclick="banP('${p.id}','${(p.name||'').replace(/'/g,"\'")}')">BAN</button></td>
+  </tr>`).join('');
+}
+async function banP(id,name) {
+  if (!sb||!confirm(name+' をBANしますか？')) return;
+  await sb.from('mmo_players').delete().eq('id',id);
+  toast('🚫 '+name+' BAN'); loadPlayers();
+}
+
+// ── マーケット ──
+async function loadListings() {
+  if (!sb) return;
+  const {data} = await sb.from('mmo_market_listings').select('*').order('created_at',{ascending:false}).limit(100);
+  const tb = document.getElementById('mkTbl');
+  if (!tb||!data) return;
+  const sc = {active:'bgr',sold:'bba',cancelled:'bgx',expired:'brd'};
+  tb.innerHTML = data.map(l => `<tr>
+    <td>${l.item_name}</td>
+    <td style="color:var(--tx3)">${l.seller_name}</td>
+    <td style="color:${l.currency==='crystal'?'var(--gold)':'var(--tx)'}">${(l.price||0).toLocaleString()}</td>
+    <td>${l.currency==='crystal'?'💎':'🪙'}</td>
+    <td style="color:var(--tx3);font-size:10px;">${l.zone_id||'?'}</td>
+    <td><span class="badge ${sc[l.status]||'bgx'}">${l.status}</span></td>
+    <td style="color:var(--tx3);font-size:9px;">${new Date(l.expires_at).toLocaleDateString('ja-JP')}</td>
+  </tr>`).join('');
+}
+async function clearExpired() {
+  if (!sb||!confirm('期限切れ出品を削除しますか？')) return;
+  await sb.from('mmo_market_listings').update({status:'expired'}).lt('expires_at',new Date().toISOString()).eq('status','active');
+  toast('🗑 期限切れクリア'); loadListings();
+}
+
+// ── チートログ ──
+async function loadAC() {
+  if (!sb) return;
+  const {data} = await sb.from('mmo_anticheat_log').select('*').order('created_at',{ascending:false}).limit(100);
+  const tb = document.getElementById('acTbl');
+  if (!tb||!data) return;
+  const tc = {INTEGRITY_FAIL:'brd',INVALID_STAT:'brd',VELOCITY_ANOMALY:'bgo',ADMIN_BRUTE_FORCE:'brd'};
+  tb.innerHTML = data.map(l => `<tr>
+    <td style="color:var(--tx3);font-size:9px;">${new Date(l.created_at).toLocaleString('ja-JP')}</td>
+    <td>${l.player_name||'?'}</td><td>${l.player_level||'?'}</td>
+    <td><span class="badge ${tc[l.violation_type]||'bgx'}">${l.violation_type}</span></td>
+    <td style="color:var(--tx3);font-size:9px;">${JSON.stringify(l.data||{}).slice(0,60)}</td>
+  </tr>`).join('');
+}
+async function clearAC() {
+  if (!sb||!confirm('ログを全件削除しますか？')) return;
+  await sb.from('mmo_anticheat_log').delete().neq('id',0);
+  toast('🗑 削除'); loadAC();
+}
+
+// ── コード生成 ──
+function g(id) { return document.getElementById(id)?.value||''; }
+function cp(id) { navigator.clipboard.writeText(document.getElementById(id)?.textContent||'').then(()=>toast('📋 コピー')); }
+
+function genMonster() {
+  const id=g('am_id'),name=g('am_name');
+  if(!id||!name){toast('IDと名前は必須');return;}
+  const hp=g('am_hp'),atk=g('am_atk'),exp=g('am_exp'),m1=g('am_m1'),m2=g('am_m2'),res=g('am_res'),color=g('am_color');
+  const large=document.getElementById('am_large').checked, boss=document.getElementById('am_boss').checked;
+  const zone=g('am_zone')||'z01', maps=(g('am_map')||'').split(',').map(s=>s.trim()).filter(Boolean), w=g('am_w')||30;
+  const c1=`  // 追加: ${name}
+  ${id}: {name:'${name}', hp:${hp}, atk:${atk}, exp:${exp},
+    meso:[${m1},${m2}], res:RES.${res}, color:'${color}',
+    shape:'${large?'large':'blob'}' ${boss?`, isBoss:true, respawnSec:600`:''} },`;
+  const c2=maps.length?maps.map(m=>`      ${m}: [ ...existing..., {type:'${id}', weight:${w}, count:[2,4], respawn:20} ],`).join('
+'):`      // ${zone}の各マップに追記
+      // {type:'${id}', weight:${w}, count:[2,4], respawn:20}`;
+  document.getElementById('am_c1').textContent=c1;
+  document.getElementById('am_c2').textContent=c2;
+  document.getElementById('am_fn').textContent=id;
+  document.getElementById('am_res_card').style.display='block';
+}
+
+function genItem() {
+  const id=g('ai_id'),name=g('ai_name');
+  if(!id||!name){toast('IDと名前は必須');return;}
+  const rc={Common:'#ccc',Uncommon:'#0e7',Rare:'#39f',Epic:'#b4f',Legendary:'#fa0'};
+  const rar=g('ai_rar');
+  const c=`const ${id} = {
+  id:'${id}', name:'${name}',
+  slot:'${g('ai_slot')}', cat:'${g('ai_cat')}',
+  atk:${g('ai_atk')}, def:${g('ai_def')},
+  rarity:'${rar}', rarityColor:'${rc[rar]||'#888'}',
+  lv:${g('ai_lv')}, enhance:0,
+};
+P.inventory.push(${id});
+savePlayer();`;
+  document.getElementById('ai_c').textContent=c;
+  document.getElementById('ai_fn').textContent=id;
+  document.getElementById('ai_res').style.display='block';
+}
+
+function genMap() {
+  const id=g('ap_id'),name=g('ap_name');
+  if(!id||!name){toast('IDと名前は必須');return;}
+  const safe=document.getElementById('ap_safe').checked, boss=document.getElementById('ap_boss').checked;
+  const w=g('ap_w'),from_=g('ap_from'),to_=g('ap_to');
+  const c1=`  ${id}: mkMap('${id}','${name}','${g('ap_zone')}',[${g('ap_lv1')},${g('ap_lv2')}],'${g('ap_bg')}',${w},
+    [gnd(${w}),plt(300,360,180),plt(800,300,200),plt(1400,340,180)],
+    [],
+    [${from_?`{x:10,y:380,w:30,h:60,edge:'left',targetMap:'${from_}',targetX:1500,targetY:400,label:'← 戻る'},`:''}${to_?`
+     {x:${w-40},y:380,w:30,h:60,edge:'right',targetMap:'${to_}',targetX:80,targetY:400,label:'→ 進む'},`:''}],
+    {${safe?`safe:true`:''}${boss?`${safe?',':''}boss:true`:''}}),`;
+  const c2=`  // zone_monster_table.jsに追記
+  ${id}: [
+    // {type:'monster_id', weight:30, count:[2,4], respawn:20},
+  ],`;
+  document.getElementById('ap_c1').textContent=c1;
+  document.getElementById('ap_c2').textContent=c2;
+  document.getElementById('ap_res').style.display='block';
+}
+
+function genJob() {
+  const id=g('aj_id');
+  if(!id){toast('職業名は必須');return;}
+  const lv=g('aj_tier'),prev=g('aj_prev');
+  const skills=[g('aj_s1'),g('aj_s2'),g('aj_s3'),g('aj_s4')].filter(Boolean);
+  const is5=parseInt(lv)>=400,is6=parseInt(lv)>=800;
+  const c=`// JOB_SKILLSに追記:
+  ${id}: ${JSON.stringify(skills)},
+
+// JOB_TREEに追記:
+  ${id}: { lv:${lv}, next:[], prev:${prev?`'${prev}'`:'null'}${is5?', prestige:true':''}${is6?', transcendent:true, rebornRequired:1':''} },
+
+// ${prev}のnextに'${id}'を追加:
+//   ${prev||'?'}: { ..., next:[..., '${id}'], ... },`;
+  document.getElementById('aj_c').textContent=c;
+  document.getElementById('aj_fn').textContent=id.toLowerCase();
+  document.getElementById('aj_res').style.display='block';
+}
+
+// ── トースト ──
+let _tt;
+function toast(msg,dur=2500) {
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),dur);
+}
+</script>
+</body>
+</html>
