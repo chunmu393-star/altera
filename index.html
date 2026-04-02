@@ -5,269 +5,263 @@
   <title>ALTERA MMO MVP</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <style>
-    :root {
-      --bg: #05060c;
-      --panel: rgba(13, 13, 26, 0.96);
-      --line: #1e2142;
-      --gold: #ffcc00;
-      --blue: #4a8dff;
-      --green: #55dd88;
-      --red: #ff5a68;
-      --txt: #d6d9e8;
-      --muted: #7d8198;
+    :root{
+      --bg:#05060c;
+      --panel:rgba(13,13,26,.96);
+      --line:#1e2142;
+      --gold:#ffcc00;
+      --blue:#4a8dff;
+      --green:#55dd88;
+      --red:#ff5a68;
+      --txt:#d6d9e8;
+      --muted:#7d8198;
     }
 
-    html, body {
-      margin: 0;
-      padding: 0;
-      width: 100%;
-      height: 100%;
-      background: #000;
-      overflow: hidden;
-      font-family: 'Courier New', monospace;
-      touch-action: none;
-      -webkit-tap-highlight-color: transparent;
-      user-select: none;
-      -webkit-user-select: none;
+    html,body{
+      margin:0;
+      padding:0;
+      width:100%;
+      height:100%;
+      background:#000;
+      overflow:hidden;
+      font-family:'Courier New', monospace;
+      touch-action:none;
+      -webkit-tap-highlight-color:transparent;
+      user-select:none;
+      -webkit-user-select:none;
     }
 
-    body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
+    body{
+      display:flex;
+      justify-content:center;
+      align-items:center;
     }
 
-    #gameCanvas {
-      display: block;
-      image-rendering: pixelated;
-      max-width: 100vw;
-      max-height: 100vh;
-      background: #07070f;
-      touch-action: none;
-      box-shadow: 0 0 24px rgba(0,0,0,0.5);
+    #gameCanvas{
+      display:block;
+      image-rendering:pixelated;
+      max-width:100vw;
+      max-height:100vh;
+      background:#07070f;
+      touch-action:none;
+      box-shadow:0 0 24px rgba(0,0,0,.5);
     }
 
-    #rotateMsg {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: #000;
-      color: var(--gold);
-      font-size: 20px;
-      text-align: center;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-      gap: 12px;
+    #rotateMsg{
+      display:none;
+      position:fixed;
+      inset:0;
+      background:#000;
+      color:var(--gold);
+      font-size:20px;
+      text-align:center;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      z-index:9999;
+      gap:12px;
     }
 
-    @media (orientation: portrait) {
-      #rotateMsg {
-        display: flex;
-      }
+    @media (orientation: portrait){
+      #rotateMsg{ display:flex; }
     }
 
-    .ui-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 1000;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: rgba(5, 6, 12, 0.82);
-      backdrop-filter: blur(4px);
+    .ui-overlay{
+      position:fixed;
+      inset:0;
+      z-index:1000;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      background:rgba(5,6,12,.82);
+      backdrop-filter:blur(4px);
     }
 
-    .ui-card {
-      width: min(360px, calc(100vw - 32px));
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 24px;
-      color: var(--txt);
-      box-sizing: border-box;
-      box-shadow: 0 20px 50px rgba(0,0,0,0.45);
+    .ui-card{
+      width:min(360px, calc(100vw - 32px));
+      background:var(--panel);
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:24px;
+      color:var(--txt);
+      box-sizing:border-box;
+      box-shadow:0 20px 50px rgba(0,0,0,.45);
     }
 
-    .title-logo {
-      text-align: center;
-      color: var(--gold);
-      font-size: 28px;
-      font-weight: bold;
-      letter-spacing: 4px;
-      margin-bottom: 4px;
+    .title-logo{
+      text-align:center;
+      color:var(--gold);
+      font-size:28px;
+      font-weight:bold;
+      letter-spacing:4px;
+      margin-bottom:4px;
     }
 
-    .subtitle-logo {
-      text-align: center;
-      color: #4d5168;
-      font-size: 11px;
-      margin-bottom: 20px;
+    .subtitle-logo{
+      text-align:center;
+      color:#4d5168;
+      font-size:11px;
+      margin-bottom:20px;
     }
 
-    .tabs {
-      display: flex;
-      border-bottom: 1px solid var(--line);
-      margin-bottom: 18px;
+    .tabs{
+      display:flex;
+      border-bottom:1px solid var(--line);
+      margin-bottom:18px;
     }
 
-    .tab-btn {
-      flex: 1;
-      padding: 9px;
-      background: none;
-      border: none;
-      color: #666;
-      font-family: inherit;
-      font-size: 12px;
-      cursor: pointer;
-      border-bottom: 2px solid transparent;
+    .tab-btn{
+      flex:1;
+      padding:9px;
+      background:none;
+      border:none;
+      color:#666;
+      font-family:inherit;
+      font-size:12px;
+      cursor:pointer;
+      border-bottom:2px solid transparent;
     }
 
-    .tab-btn.active {
-      color: var(--blue);
-      border-bottom-color: var(--blue);
+    .tab-btn.active{
+      color:var(--blue);
+      border-bottom-color:var(--blue);
     }
 
-    .field-label {
-      color: #747a98;
-      font-size: 10px;
-      margin-bottom: 5px;
+    .field-label{
+      color:#747a98;
+      font-size:10px;
+      margin-bottom:5px;
     }
 
-    .field-wrap {
-      margin-bottom: 12px;
+    .field-wrap{
+      margin-bottom:12px;
     }
 
-    .input {
-      width: 100%;
-      box-sizing: border-box;
-      background: #111321;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      color: #d5daf2;
-      padding: 11px 10px;
-      font-family: inherit;
-      font-size: 13px;
-      outline: none;
+    .input{
+      width:100%;
+      box-sizing:border-box;
+      background:#111321;
+      border:1px solid var(--line);
+      border-radius:6px;
+      color:#d5daf2;
+      padding:11px 10px;
+      font-family:inherit;
+      font-size:13px;
+      outline:none;
     }
 
-    .input:focus {
-      border-color: #3a6ae0;
-      box-shadow: 0 0 0 2px rgba(74, 141, 255, 0.15);
+    .input:focus{
+      border-color:#3a6ae0;
+      box-shadow:0 0 0 2px rgba(74,141,255,.15);
     }
 
-    .msg {
-      min-height: 18px;
-      font-size: 10px;
-      color: var(--red);
-      margin-bottom: 12px;
+    .msg{
+      min-height:18px;
+      font-size:10px;
+      color:var(--red);
+      margin-bottom:12px;
     }
 
-    .primary-btn, .secondary-btn {
-      width: 100%;
-      padding: 12px;
-      border: none;
-      border-radius: 6px;
-      font-family: inherit;
-      font-size: 12px;
-      font-weight: bold;
-      cursor: pointer;
+    .primary-btn,.secondary-btn{
+      width:100%;
+      padding:12px;
+      border:none;
+      border-radius:6px;
+      font-family:inherit;
+      font-size:12px;
+      font-weight:bold;
+      cursor:pointer;
     }
 
-    .primary-btn {
-      background: var(--blue);
-      color: #09101e;
+    .primary-btn{
+      background:var(--blue);
+      color:#09101e;
     }
 
-    .secondary-btn {
-      background: #1a1f36;
-      color: #d4d8eb;
-      border: 1px solid var(--line);
+    .secondary-btn{
+      background:#1a1f36;
+      color:#d4d8eb;
+      border:1px solid var(--line);
     }
 
-    .btn-row {
-      display: flex;
-      gap: 10px;
-      margin-top: 8px;
+    .btn-row{
+      display:flex;
+      gap:10px;
+      margin-top:8px;
     }
 
-    .small-note {
-      color: #6f748a;
-      font-size: 10px;
-      text-align: center;
-      margin-top: 10px;
-      line-height: 1.5;
+    .small-note{
+      color:#6f748a;
+      font-size:10px;
+      text-align:center;
+      margin-top:10px;
+      line-height:1.5;
     }
 
-    .touch-btn {
-      position: fixed;
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      z-index: 600;
-      color: #fff;
-      font-size: 12px;
-      font-weight: bold;
-      font-family: inherit;
-      touch-action: none;
-      border: 2px solid rgba(255,255,255,0.18);
-      box-sizing: border-box;
-      background: rgba(255,255,255,0.08);
-      backdrop-filter: blur(3px);
+    .touch-btn{
+      position:fixed;
+      width:64px;
+      height:64px;
+      border-radius:50%;
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index:600;
+      color:#fff;
+      font-size:12px;
+      font-weight:bold;
+      font-family:inherit;
+      touch-action:none;
+      border:2px solid rgba(255,255,255,.18);
+      box-sizing:border-box;
+      background:rgba(255,255,255,.08);
+      backdrop-filter:blur(3px);
     }
 
-    .touch-btn.show {
-      display: flex;
+    .touch-btn.show{ display:flex; }
+
+    .touch-btn.attack{
+      right:22px;
+      bottom:28px;
+      background:rgba(255,78,97,.22);
+      border-color:rgba(255,78,97,.45);
     }
 
-    .touch-btn.attack {
-      right: 22px;
-      bottom: 28px;
-      background: rgba(255, 78, 97, 0.22);
-      border-color: rgba(255, 78, 97, 0.45);
+    .touch-btn.jump{
+      right:102px;
+      bottom:108px;
+      background:rgba(72,136,255,.22);
+      border-color:rgba(72,136,255,.45);
     }
 
-    .touch-btn.jump {
-      right: 102px;
-      bottom: 108px;
-      background: rgba(72, 136, 255, 0.22);
-      border-color: rgba(72, 136, 255, 0.45);
+    .joy-base{
+      position:fixed;
+      left:20px;
+      bottom:20px;
+      width:118px;
+      height:118px;
+      border-radius:50%;
+      display:none;
+      z-index:600;
+      touch-action:none;
+      background:rgba(255,255,255,.07);
+      border:2px solid rgba(255,255,255,.15);
+      box-sizing:border-box;
+      backdrop-filter:blur(3px);
     }
 
-    .joy-base {
-      position: fixed;
-      left: 20px;
-      bottom: 20px;
-      width: 118px;
-      height: 118px;
-      border-radius: 50%;
-      display: none;
-      z-index: 600;
-      touch-action: none;
-      background: rgba(255,255,255,0.07);
-      border: 2px solid rgba(255,255,255,0.15);
-      box-sizing: border-box;
-      backdrop-filter: blur(3px);
-    }
+    .joy-base.show{ display:block; }
 
-    .joy-base.show {
-      display: block;
-    }
-
-    .joy-stick {
-      position: absolute;
-      width: 46px;
-      height: 46px;
-      border-radius: 50%;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-      background: rgba(255,255,255,0.30);
-      pointer-events: none;
+    .joy-stick{
+      position:absolute;
+      width:46px;
+      height:46px;
+      border-radius:50%;
+      left:50%;
+      top:50%;
+      transform:translate(-50%,-50%);
+      background:rgba(255,255,255,.30);
+      pointer-events:none;
     }
   </style>
 </head>
@@ -288,8 +282,8 @@
     // -----------------------------------------
     // Supabase - 自分の値に置き換えてください
     // -----------------------------------------
-    const SUPABASE_URL = 'https://asocakwtqqehouldjebc.supabase.co';
-    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFzb2Nha3d0cXFlaG91bGRqZWJjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUxMTkyNzIsImV4cCI6MjA5MDY5NTI3Mn0.zhgfWXo3hM1s7PGurduN4NTNmjIJC7-V1j75Ytrz310';
+    const SUPABASE_URL = 'YOUR_SUPABASE_URL';
+    const SUPABASE_KEY = 'YOUR_SUPABASE_ANON_KEY';
     let sb = null;
 
     function initSB() {
@@ -348,12 +342,12 @@
     // -----------------------------------------
     const KEY = {};
     const VK = {
-      left: false,
-      right: false,
-      jump: false,
-      attack: false,
-      _jp: false,
-      _ap: false,
+      left:false,
+      right:false,
+      jump:false,
+      attack:false,
+      _jp:false,
+      _ap:false,
     };
 
     window.addEventListener('keydown', (e) => {
@@ -361,7 +355,7 @@
       if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space'].includes(e.code)) {
         e.preventDefault();
       }
-    }, { passive: false });
+    }, { passive:false });
 
     window.addEventListener('keyup', (e) => {
       KEY[e.code] = false;
@@ -371,180 +365,178 @@
     // Game State
     // -----------------------------------------
     const GS = {
-      scene: 'login',
-      currentMap: null,
-      cameraX: 0,
-      lastTs: 0,
-      autosaveAt: 0,
-      portalLockUntil: 0,
-      stars: Array.from({ length: 80 }, (_, i) => ({
-        x: (i * 137.5) % GAME_W,
-        y: (i * 97.3) % GAME_H,
-        a: 0.08 + (i % 5) * 0.03
+      scene:'login',
+      currentMap:null,
+      cameraX:0,
+      autosaveAt:0,
+      portalLockUntil:0,
+      stars:Array.from({ length:80 }, (_, i) => ({
+        x:(i * 137.5) % GAME_W,
+        y:(i * 97.3) % GAME_H,
+        a:0.08 + (i % 5) * 0.03
       })),
-      hitTexts: [],
-      mobileInited: false,
-      touchInited: false,
+      hitTexts:[],
+      mobileInited:false,
     };
 
     const P = {
-      id: '',
-      loginId: '',
-      name: '',
-      job: 'Novice',
-      level: 1,
-      exp: 0,
-      hp: 100,
-      maxHp: 100,
-      mp: 50,
-      maxMp: 50,
-      atk: 10,
-      def: 5,
-      meso: 0,
-      crystals: 0,
-      mapId: 'z01_m01',
-      x: 200,
-      y: 400,
-      w: 28,
-      h: 40,
-      vx: 0,
-      vy: 0,
-      speed: 3.3,
-      jumpPower: 10.6,
-      facing: 1,
-      onGround: false,
-      attackCd: 0,
-      hurtCd: 0,
-      attackFlash: 0,
-      rebornCount: 0,
-      inventory: [],
-      equipped: {},
-      _pendingLogin: null,
+      id:'',
+      loginId:'',
+      name:'',
+      job:'Novice',
+      level:1,
+      exp:0,
+      hp:100,
+      maxHp:100,
+      mp:50,
+      maxMp:50,
+      atk:10,
+      def:5,
+      meso:0,
+      crystals:0,
+      mapId:'z01_m01',
+      x:200,
+      y:400,
+      w:28,
+      h:40,
+      vx:0,
+      vy:0,
+      speed:3.3,
+      jumpPower:10.6,
+      facing:1,
+      onGround:false,
+      attackCd:0,
+      hurtCd:0,
+      attackFlash:0,
+      rebornCount:0,
+      inventory:[],
+      equipped:{},
+      _pendingLogin:null,
     };
 
     // -----------------------------------------
     // Data
     // -----------------------------------------
     const MONSTER_DATA = {
-      slime: {
-        name: 'スライム',
-        maxHp: 18,
-        atk: 4,
-        def: 0,
-        exp: 6,
-        meso: 3,
-        speed: 1.0,
-        w: 28,
-        h: 22,
-        color: '#69d96e'
+      slime:{
+        name:'スライム',
+        maxHp:18,
+        atk:4,
+        def:0,
+        exp:6,
+        meso:3,
+        speed:1.0,
+        w:28,
+        h:22,
+        color:'#69d96e'
       },
-      shroom: {
-        name: 'マッシュ',
-        maxHp: 30,
-        atk: 6,
-        def: 1,
-        exp: 10,
-        meso: 6,
-        speed: 1.15,
-        w: 30,
-        h: 28,
-        color: '#d96b5d'
+      shroom:{
+        name:'マッシュ',
+        maxHp:30,
+        atk:6,
+        def:1,
+        exp:10,
+        meso:6,
+        speed:1.15,
+        w:30,
+        h:28,
+        color:'#d96b5d'
       },
-      bat: {
-        name: 'バット',
-        maxHp: 44,
-        atk: 9,
-        def: 2,
-        exp: 16,
-        meso: 10,
-        speed: 1.55,
-        w: 30,
-        h: 20,
-        color: '#8e7cff'
+      bat:{
+        name:'バット',
+        maxHp:44,
+        atk:9,
+        def:2,
+        exp:16,
+        meso:10,
+        speed:1.55,
+        w:30,
+        h:20,
+        color:'#8e7cff'
       }
     };
 
     const MAPS = {
-      z01_m01: {
-        name: 'はじまりの草原',
-        width: 2200,
-        skyTop: '#0a1025',
-        skyBottom: '#1d3765',
-        haze: '#89bfff',
-        ground: '#3e9e5b',
-        dirt: '#2f6140',
-        platforms: [
-          { x: 0, y: 500, w: 2200, h: 40, type: 'ground' },
-          { x: 300, y: 420, w: 220, h: 16, type: 'wood' },
-          { x: 680, y: 350, w: 180, h: 16, type: 'wood' },
-          { x: 1110, y: 390, w: 190, h: 16, type: 'wood' },
-          { x: 1520, y: 315, w: 160, h: 16, type: 'wood' }
+      z01_m01:{
+        name:'はじまりの草原',
+        width:2200,
+        skyTop:'#0a1025',
+        skyBottom:'#1d3765',
+        haze:'#89bfff',
+        ground:'#3e9e5b',
+        dirt:'#2f6140',
+        platforms:[
+          { x:0, y:500, w:2200, h:40, type:'ground' },
+          { x:300, y:420, w:220, h:16, type:'wood' },
+          { x:680, y:350, w:180, h:16, type:'wood' },
+          { x:1110, y:390, w:190, h:16, type:'wood' },
+          { x:1520, y:315, w:160, h:16, type:'wood' }
         ],
-        portals: [
-          { x: 2100, y: 420, w: 40, h: 80, to: 'z01_m02', tx: 90, ty: 390, label: '古木の丘へ' }
+        portals:[
+          { x:2100, y:420, w:40, h:80, to:'z01_m02', tx:90, ty:390, label:'古木の丘へ' }
         ],
-        spawns: [
-          { type: 'slime', x: 170, y: 478, minX: 80, maxX: 360 },
-          { type: 'slime', x: 490, y: 398, minX: 320, maxX: 520 },
-          { type: 'shroom', x: 800, y: 328, minX: 700, maxX: 850 },
-          { type: 'slime', x: 1260, y: 368, minX: 1120, maxX: 1280 },
-          { type: 'shroom', x: 1670, y: 293, minX: 1540, maxX: 1680 }
+        spawns:[
+          { type:'slime', x:170, y:478, minX:80, maxX:360 },
+          { type:'slime', x:490, y:398, minX:320, maxX:520 },
+          { type:'shroom', x:800, y:328, minX:700, maxX:850 },
+          { type:'slime', x:1260, y:368, minX:1120, maxX:1280 },
+          { type:'shroom', x:1670, y:293, minX:1540, maxX:1680 }
         ]
       },
-      z01_m02: {
-        name: '古木の丘',
-        width: 2400,
-        skyTop: '#0e0f22',
-        skyBottom: '#31405f',
-        haze: '#a7c6ff',
-        ground: '#4f8750',
-        dirt: '#3d5338',
-        platforms: [
-          { x: 0, y: 500, w: 2400, h: 40, type: 'ground' },
-          { x: 280, y: 440, w: 180, h: 16, type: 'wood' },
-          { x: 610, y: 378, w: 160, h: 16, type: 'wood' },
-          { x: 900, y: 325, w: 160, h: 16, type: 'wood' },
-          { x: 1250, y: 270, w: 180, h: 16, type: 'wood' },
-          { x: 1600, y: 340, w: 180, h: 16, type: 'wood' },
-          { x: 1940, y: 410, w: 180, h: 16, type: 'wood' }
+      z01_m02:{
+        name:'古木の丘',
+        width:2400,
+        skyTop:'#0e0f22',
+        skyBottom:'#31405f',
+        haze:'#a7c6ff',
+        ground:'#4f8750',
+        dirt:'#3d5338',
+        platforms:[
+          { x:0, y:500, w:2400, h:40, type:'ground' },
+          { x:280, y:440, w:180, h:16, type:'wood' },
+          { x:610, y:378, w:160, h:16, type:'wood' },
+          { x:900, y:325, w:160, h:16, type:'wood' },
+          { x:1250, y:270, w:180, h:16, type:'wood' },
+          { x:1600, y:340, w:180, h:16, type:'wood' },
+          { x:1940, y:410, w:180, h:16, type:'wood' }
         ],
-        portals: [
-          { x: 25, y: 420, w: 40, h: 80, to: 'z01_m01', tx: 2020, ty: 390, label: '草原へ' },
-          { x: 2325, y: 420, w: 40, h: 80, to: 'z01_m03', tx: 100, ty: 390, label: '廃坑入口へ' }
+        portals:[
+          { x:25, y:420, w:40, h:80, to:'z01_m01', tx:2020, ty:390, label:'草原へ' },
+          { x:2325, y:420, w:40, h:80, to:'z01_m03', tx:100, ty:390, label:'廃坑入口へ' }
         ],
-        spawns: [
-          { type: 'slime', x: 120, y: 478, minX: 80, maxX: 260 },
-          { type: 'shroom', x: 380, y: 418, minX: 300, maxX: 430 },
-          { type: 'shroom', x: 990, y: 303, minX: 920, maxX: 1040 },
-          { type: 'bat', x: 1360, y: 248, minX: 1270, maxX: 1410 },
-          { type: 'bat', x: 2020, y: 388, minX: 1950, maxX: 2110 }
+        spawns:[
+          { type:'slime', x:120, y:478, minX:80, maxX:260 },
+          { type:'shroom', x:380, y:418, minX:300, maxX:430 },
+          { type:'shroom', x:990, y:303, minX:920, maxX:1040 },
+          { type:'bat', x:1360, y:248, minX:1270, maxX:1410 },
+          { type:'bat', x:2020, y:388, minX:1950, maxX:2110 }
         ]
       },
-      z01_m03: {
-        name: '廃坑入口',
-        width: 2200,
-        skyTop: '#090a14',
-        skyBottom: '#23263f',
-        haze: '#8e95bd',
-        ground: '#5f665e',
-        dirt: '#4b473d',
-        platforms: [
-          { x: 0, y: 500, w: 2200, h: 40, type: 'ground' },
-          { x: 240, y: 430, w: 170, h: 16, type: 'stone' },
-          { x: 560, y: 370, w: 160, h: 16, type: 'stone' },
-          { x: 890, y: 310, w: 180, h: 16, type: 'stone' },
-          { x: 1300, y: 355, w: 160, h: 16, type: 'stone' },
-          { x: 1700, y: 300, w: 180, h: 16, type: 'stone' }
+      z01_m03:{
+        name:'廃坑入口',
+        width:2200,
+        skyTop:'#090a14',
+        skyBottom:'#23263f',
+        haze:'#8e95bd',
+        ground:'#5f665e',
+        dirt:'#4b473d',
+        platforms:[
+          { x:0, y:500, w:2200, h:40, type:'ground' },
+          { x:240, y:430, w:170, h:16, type:'stone' },
+          { x:560, y:370, w:160, h:16, type:'stone' },
+          { x:890, y:310, w:180, h:16, type:'stone' },
+          { x:1300, y:355, w:160, h:16, type:'stone' },
+          { x:1700, y:300, w:180, h:16, type:'stone' }
         ],
-        portals: [
-          { x: 25, y: 420, w: 40, h: 80, to: 'z01_m02', tx: 2250, ty: 390, label: '古木の丘へ' }
+        portals:[
+          { x:25, y:420, w:40, h:80, to:'z01_m02', tx:2250, ty:390, label:'古木の丘へ' }
         ],
-        spawns: [
-          { type: 'shroom', x: 120, y: 478, minX: 80, maxX: 210 },
-          { type: 'bat', x: 620, y: 348, minX: 575, maxX: 700 },
-          { type: 'bat', x: 980, y: 288, minX: 900, maxX: 1050 },
-          { type: 'bat', x: 1380, y: 333, minX: 1320, maxX: 1450 },
-          { type: 'bat', x: 1780, y: 278, minX: 1710, maxX: 1860 }
+        spawns:[
+          { type:'shroom', x:120, y:478, minX:80, maxX:210 },
+          { type:'bat', x:620, y:348, minX:575, maxX:700 },
+          { type:'bat', x:980, y:288, minX:900, maxX:1050 },
+          { type:'bat', x:1380, y:333, minX:1320, maxX:1450 },
+          { type:'bat', x:1780, y:278, minX:1710, maxX:1860 }
         ]
       }
     };
@@ -576,20 +568,17 @@
     }
 
     function addFloatText(x, y, text, color = '#ffffff') {
-      GS.hitTexts.push({
-        x, y, text, color,
-        life: 42
-      });
+      GS.hitTexts.push({ x, y, text, color, life:42 });
     }
 
     function safeJsonParse(str, fallback) {
-      try {
-        return JSON.parse(str);
-      } catch {
-        return fallback;
-      }
+      try { return JSON.parse(str); }
+      catch { return fallback; }
     }
 
+    // -----------------------------------------
+    // Local Save
+    // -----------------------------------------
     function savePlayerToLocal() {
       localStorage.setItem('altera_pid', P.id || '');
       localStorage.setItem('altera_login_id', P.loginId || '');
@@ -638,7 +627,7 @@
 
     async function sha256(str) {
       const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+      return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
     }
 
     // -----------------------------------------
@@ -899,7 +888,7 @@
       liMsg('登録中...', '#8892b0');
 
       try {
-        const { data: ex, error: exErr } = await sb
+        const { data:ex, error:exErr } = await sb
           .from('mmo_players')
           .select('login_id')
           .eq('login_id', id)
@@ -941,8 +930,8 @@
         P.equipped = {};
         P.rebornCount = 0;
         P._pendingLogin = {
-          login_id: id,
-          password_hash: hash,
+          login_id:id,
+          password_hash:hash,
         };
 
         savePlayerToLocal();
@@ -986,6 +975,7 @@
 
       try {
         const hash = await sha256(id + ':' + pw);
+
         const { data, error } = await sb
           .from('mmo_players')
           .select('*')
@@ -1012,7 +1002,7 @@
 
         await sb
           .from('mmo_players')
-          .update({ last_login_at: new Date().toISOString() })
+          .update({ last_login_at:new Date().toISOString() })
           .eq('id', data.id);
 
         liMsg('ログイン成功！', '#55dd88');
@@ -1067,39 +1057,39 @@
       if (!initSB()) return;
 
       const payload = {
-        id: P.id,
-        name: P.name || '',
-        job: P.job || 'Novice',
-        level: P.level || 1,
-        exp: P.exp || 0,
-        hp: P.hp || 0,
-        max_hp: P.maxHp || 100,
-        mp: P.mp || 0,
-        max_mp: P.maxMp || 50,
-        atk: P.atk || 10,
-        def: P.def || 5,
-        meso: P.meso || 0,
-        crystals: P.crystals || 0,
-        map_id: P.mapId || 'z01_m01',
-        pos_x: Math.floor(P.x ?? 200),
-        pos_y: Math.floor(P.y ?? 400),
-        reborn_count: P.rebornCount || 0,
-        inventory: JSON.stringify(P.inventory || []),
-        equipped: JSON.stringify(P.equipped || {}),
-        updated_at: new Date().toISOString(),
+        id:P.id,
+        name:P.name || '',
+        job:P.job || 'Novice',
+        level:P.level || 1,
+        exp:P.exp || 0,
+        hp:P.hp || 0,
+        max_hp:P.maxHp || 100,
+        mp:P.mp || 0,
+        max_mp:P.maxMp || 50,
+        atk:P.atk || 10,
+        def:P.def || 5,
+        meso:P.meso || 0,
+        crystals:P.crystals || 0,
+        map_id:P.mapId || 'z01_m01',
+        pos_x:Math.floor(P.x ?? 200),
+        pos_y:Math.floor(P.y ?? 400),
+        reborn_count:P.rebornCount || 0,
+        inventory:JSON.stringify(P.inventory || []),
+        equipped:JSON.stringify(P.equipped || {}),
+        updated_at:new Date().toISOString(),
       };
 
       try {
         if (P._pendingLogin && P._pendingLogin.login_id && P._pendingLogin.password_hash) {
           const insertPayload = {
             ...payload,
-            login_id: P._pendingLogin.login_id,
-            password_hash: P._pendingLogin.password_hash,
+            login_id:P._pendingLogin.login_id,
+            password_hash:P._pendingLogin.password_hash,
           };
 
           const { error } = await sb
             .from('mmo_players')
-            .upsert(insertPayload, { onConflict: 'id' });
+            .upsert(insertPayload, { onConflict:'id' });
 
           if (error) {
             console.error('savePlayer pending error:', error);
@@ -1112,7 +1102,7 @@
           return;
         }
 
-        const { data: ex, error: exErr } = await sb
+        const { data:ex, error:exErr } = await sb
           .from('mmo_players')
           .select('id')
           .eq('id', P.id)
@@ -1159,6 +1149,7 @@
 
       joyBase = document.createElement('div');
       joyBase.className = 'joy-base show';
+
       joyStick = document.createElement('div');
       joyStick.className = 'joy-stick';
       joyBase.appendChild(joyStick);
@@ -1184,7 +1175,7 @@
         joyCX = r.left + r.width / 2;
         joyCY = r.top + r.height / 2;
         updateJoy(t.clientX, t.clientY);
-      }, { passive: false });
+      }, { passive:false });
 
       document.addEventListener('touchmove', (e) => {
         if (!joyActive) return;
@@ -1195,7 +1186,7 @@
             break;
           }
         }
-      }, { passive: false });
+      }, { passive:false });
 
       document.addEventListener('touchend', (e) => {
         for (const t of e.changedTouches) {
@@ -1208,27 +1199,29 @@
             break;
           }
         }
-      }, { passive: false });
+      }, { passive:false });
 
-      const pressOn = (key, btn, activeBg, normalBg) => {
+      const bindTouchBtn = (key, btn, activeBg, normalBg) => {
         btn.addEventListener('touchstart', (e) => {
           e.preventDefault();
           VK[key] = true;
           btn.style.background = activeBg;
-        }, { passive: false });
+        }, { passive:false });
+
         btn.addEventListener('touchend', (e) => {
           e.preventDefault();
           VK[key] = false;
           btn.style.background = normalBg;
-        }, { passive: false });
+        }, { passive:false });
+
         btn.addEventListener('touchcancel', () => {
           VK[key] = false;
           btn.style.background = normalBg;
         });
       };
 
-      pressOn('attack', attackBtn, 'rgba(255,78,97,0.45)', 'rgba(255,78,97,0.22)');
-      pressOn('jump', jumpBtn, 'rgba(72,136,255,0.45)', 'rgba(72,136,255,0.22)');
+      bindTouchBtn('attack', attackBtn, 'rgba(255,78,97,.45)', 'rgba(255,78,97,.22)');
+      bindTouchBtn('jump', jumpBtn, 'rgba(72,136,255,.45)', 'rgba(72,136,255,.22)');
     }
 
     function updateJoy(cx, cy) {
@@ -1247,7 +1240,7 @@
     }
 
     // -----------------------------------------
-    // World / Maps
+    // World / Gameplay
     // -----------------------------------------
     function loadMap(mapId, x = 200, y = 400) {
       const map = MAPS[mapId];
@@ -1264,27 +1257,26 @@
       MONSTERS = map.spawns.map((s, i) => {
         const base = MONSTER_DATA[s.type];
         return {
-          id: `${mapId}_${s.type}_${i}_${Math.random().toString(36).slice(2, 7)}`,
-          type: s.type,
-          name: base.name,
-          x: s.x,
-          y: s.y - base.h,
-          baseY: s.y - base.h,
-          w: base.w,
-          h: base.h,
-          hp: base.maxHp,
-          maxHp: base.maxHp,
-          atk: base.atk,
-          def: base.def,
-          exp: base.exp,
-          meso: base.meso,
-          speed: base.speed,
-          color: base.color,
-          facing: Math.random() < 0.5 ? -1 : 1,
-          minX: s.minX,
-          maxX: s.maxX,
-          hitFlash: 0,
-          dead: false
+          id:`${mapId}_${s.type}_${i}_${Math.random().toString(36).slice(2,7)}`,
+          type:s.type,
+          name:base.name,
+          x:s.x,
+          y:s.y - base.h,
+          w:base.w,
+          h:base.h,
+          hp:base.maxHp,
+          maxHp:base.maxHp,
+          atk:base.atk,
+          def:base.def,
+          exp:base.exp,
+          meso:base.meso,
+          speed:base.speed,
+          color:base.color,
+          facing:Math.random() < 0.5 ? -1 : 1,
+          minX:s.minX,
+          maxX:s.maxX,
+          hitFlash:0,
+          dead:false
         };
       });
 
@@ -1309,14 +1301,15 @@
 
     function basicAttack() {
       if (P.attackCd > 0 || GS.scene !== 'play') return;
+
       P.attackCd = ATTACK_COOLDOWN;
       P.attackFlash = 7;
 
       const hitbox = {
-        x: P.facing === 1 ? P.x + P.w - 2 : P.x - 48,
-        y: P.y + 6,
-        w: 48,
-        h: 26
+        x:P.facing === 1 ? P.x + P.w - 2 : P.x - 48,
+        y:P.y + 6,
+        w:48,
+        h:26
       };
 
       let hitAny = false;
@@ -1364,6 +1357,7 @@
 
     function damagePlayer(amount) {
       if (P.hurtCd > 0) return;
+
       const dmg = Math.max(1, amount - Math.floor(P.def * 0.35));
       P.hp -= dmg;
       P.hurtCd = HURT_COOLDOWN;
@@ -1414,6 +1408,7 @@
 
       P.onGround = false;
       const plats = getPlatforms();
+
       for (const pf of plats) {
         if (
           P.x + P.w > pf.x &&
@@ -1494,6 +1489,42 @@
     // -----------------------------------------
     // Draw
     // -----------------------------------------
+    function drawLoginScene() {
+      CTX.fillStyle = '#07070f';
+      CTX.fillRect(0, 0, GAME_W, GAME_H);
+
+      for (const s of GS.stars) {
+        CTX.fillStyle = `rgba(255,255,255,${s.a})`;
+        CTX.fillRect(s.x, s.y, 2, 2);
+      }
+
+      CTX.fillStyle = '#ffcc00';
+      CTX.font = 'bold 32px Courier New';
+      CTX.textAlign = 'center';
+      CTX.fillText('ALTERA', GAME_W / 2, 150);
+
+      CTX.fillStyle = '#59607d';
+      CTX.font = '14px Courier New';
+      CTX.fillText('MASSIVELY MULTIPLAYER ONLINE', GAME_W / 2, 180);
+
+      CTX.textAlign = 'left';
+    }
+
+    function drawCreateScene() {
+      CTX.fillStyle = '#0a0c16';
+      CTX.fillRect(0, 0, GAME_W, GAME_H);
+
+      CTX.fillStyle = '#ffcc00';
+      CTX.font = 'bold 26px Courier New';
+      CTX.textAlign = 'center';
+      CTX.fillText('キャラクター作成', GAME_W / 2, 130);
+
+      CTX.fillStyle = '#a8afc9';
+      CTX.font = '14px Courier New';
+      CTX.fillText('名前入力UIを表示中...', GAME_W / 2, 170);
+      CTX.textAlign = 'left';
+    }
+
     function drawSky(map) {
       const g = CTX.createLinearGradient(0, 0, 0, GAME_H);
       g.addColorStop(0, map.skyTop);
@@ -1511,10 +1542,10 @@
       CTX.globalAlpha = 1;
     }
 
-    function drawParallax(map) {
+    function drawParallax() {
       CTX.save();
       CTX.translate(-GS.cameraX * 0.35, 0);
-      CTX.fillStyle = 'rgba(0,0,0,0.18)';
+      CTX.fillStyle = 'rgba(0,0,0,.18)';
       for (let i = 0; i < 20; i++) {
         const x = i * 180;
         CTX.beginPath();
@@ -1535,4 +1566,181 @@
 
         if (pf.type === 'ground') {
           CTX.fillStyle = map.ground;
-          CTX.fillRect(x,
+          CTX.fillRect(x, y, pf.w, pf.h);
+          CTX.fillStyle = map.dirt;
+          CTX.fillRect(x, y + 12, pf.w, pf.h - 12);
+        } else if (pf.type === 'wood') {
+          CTX.fillStyle = '#8a623a';
+          CTX.fillRect(x, y, pf.w, pf.h);
+          CTX.fillStyle = '#a87a46';
+          CTX.fillRect(x, y, pf.w, 4);
+        } else {
+          CTX.fillStyle = '#6d727f';
+          CTX.fillRect(x, y, pf.w, pf.h);
+          CTX.fillStyle = '#8a91a1';
+          CTX.fillRect(x, y, pf.w, 4);
+        }
+      }
+    }
+
+    function drawPortals(map) {
+      for (const po of map.portals) {
+        const x = po.x - GS.cameraX;
+        if (x + po.w < 0 || x > GAME_W) continue;
+
+        CTX.fillStyle = 'rgba(120,200,255,.18)';
+        CTX.fillRect(x, po.y, po.w, po.h);
+        CTX.strokeStyle = 'rgba(120,200,255,.65)';
+        CTX.strokeRect(x, po.y, po.w, po.h);
+      }
+    }
+
+    function drawMonsters() {
+      for (const m of MONSTERS) {
+        const x = Math.floor(m.x - GS.cameraX);
+        const y = Math.floor(m.y);
+        if (x + m.w < 0 || x > GAME_W) continue;
+
+        CTX.fillStyle = m.hitFlash > 0 ? '#ffffff' : m.color;
+        CTX.fillRect(x, y, m.w, m.h);
+
+        CTX.fillStyle = 'rgba(0,0,0,.5)';
+        CTX.fillRect(x, y - 8, m.w, 4);
+        CTX.fillStyle = '#ff6666';
+        CTX.fillRect(x, y - 8, m.w * (m.hp / m.maxHp), 4);
+      }
+    }
+
+    function drawPlayer() {
+      const px = Math.floor(P.x - GS.cameraX);
+      const py = Math.floor(P.y);
+
+      CTX.fillStyle = P.hurtCd > 0 ? '#ff9090' : '#ffe7a8';
+      CTX.fillRect(px, py, P.w, P.h);
+
+      CTX.fillStyle = '#222';
+      if (P.facing === 1) CTX.fillRect(px + 18, py + 12, 4, 4);
+      else CTX.fillRect(px + 6, py + 12, 4, 4);
+
+      if (P.attackFlash > 0) {
+        CTX.fillStyle = 'rgba(255,220,120,.35)';
+        if (P.facing === 1) CTX.fillRect(px + P.w - 2, py + 6, 46, 26);
+        else CTX.fillRect(px - 46, py + 6, 46, 26);
+      }
+    }
+
+    function drawHitTexts() {
+      CTX.font = 'bold 14px Courier New';
+      CTX.textAlign = 'center';
+      for (const t of GS.hitTexts) {
+        CTX.globalAlpha = Math.max(0, t.life / 42);
+        CTX.fillStyle = t.color;
+        CTX.fillText(t.text, t.x - GS.cameraX, t.y);
+      }
+      CTX.globalAlpha = 1;
+      CTX.textAlign = 'left';
+    }
+
+    function drawHUD() {
+      CTX.fillStyle = 'rgba(0,0,0,.45)';
+      CTX.fillRect(16, 16, 220, 64);
+
+      CTX.fillStyle = '#ffffff';
+      CTX.font = '12px Courier New';
+      CTX.fillText(`${P.name || 'NO NAME'}  Lv.${P.level}  ${P.job}`, 24, 34);
+
+      CTX.fillStyle = '#331116';
+      CTX.fillRect(24, 42, 180, 10);
+      CTX.fillStyle = '#ff5a68';
+      CTX.fillRect(24, 42, 180 * (P.hp / P.maxHp), 10);
+      CTX.strokeStyle = 'rgba(255,255,255,.15)';
+      CTX.strokeRect(24, 42, 180, 10);
+
+      CTX.fillStyle = '#111b33';
+      CTX.fillRect(24, 58, 180, 8);
+      CTX.fillStyle = '#4a8dff';
+      CTX.fillRect(24, 58, 180 * (P.mp / P.maxMp), 8);
+      CTX.strokeStyle = 'rgba(255,255,255,.12)';
+      CTX.strokeRect(24, 58, 180, 8);
+
+      const need = needExp(P.level);
+      CTX.fillStyle = 'rgba(0,0,0,.45)';
+      CTX.fillRect(250, 16, 220, 24);
+      CTX.fillStyle = '#3a2d00';
+      CTX.fillRect(258, 24, 180, 8);
+      CTX.fillStyle = '#ffcc00';
+      CTX.fillRect(258, 24, 180 * (P.exp / need), 8);
+      CTX.strokeStyle = 'rgba(255,255,255,.12)';
+      CTX.strokeRect(258, 24, 180, 8);
+      CTX.fillStyle = '#d8dcef';
+      CTX.fillText(`EXP ${P.exp} / ${need}`, 258, 20);
+
+      if (GS.currentMap) {
+        CTX.fillStyle = 'rgba(0,0,0,.42)';
+        CTX.fillRect(GAME_W - 230, 16, 214, 54);
+        CTX.fillStyle = '#ffcc00';
+        CTX.fillText(`MAP: ${GS.currentMap.name}`, GAME_W - 220, 34);
+        CTX.fillStyle = '#d8dcef';
+        CTX.fillText(`MESO: ${P.meso}`, GAME_W - 220, 52);
+      }
+    }
+
+    function drawMapScene() {
+      const map = GS.currentMap;
+      if (!map) {
+        CTX.fillStyle = '#000';
+        CTX.fillRect(0, 0, GAME_W, GAME_H);
+        return;
+      }
+
+      drawSky(map);
+      drawParallax();
+      drawPlatforms(map);
+      drawPortals(map);
+      drawMonsters();
+      drawPlayer();
+      drawHitTexts();
+      drawHUD();
+    }
+
+    // -----------------------------------------
+    // Game Loop
+    // -----------------------------------------
+    function gameLoop(ts) {
+      if (!CVS || !CTX) return;
+
+      if (GS.scene === 'login') {
+        drawLoginScene();
+      } else if (GS.scene === 'create') {
+        drawCreateScene();
+      } else if (GS.scene === 'play') {
+        updatePlayer();
+        updateMonsters();
+        updateHitTexts();
+        updateAutosave(ts);
+        drawMapScene();
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    // -----------------------------------------
+    // Boot
+    // -----------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      initCanvas();
+      initSB();
+      loadPlayerFromLocal();
+
+      GS.scene = 'login';
+      showLoginUI();
+
+      requestAnimationFrame(gameLoop);
+    });
+
+    window.addEventListener('beforeunload', () => {
+      savePlayerToLocal();
+    });
+  </script>
+</body>
+</html>
