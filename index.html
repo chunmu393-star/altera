@@ -178,6 +178,14 @@
       debugMsg:''
     };
 
+    function clearGameplayInputs(){
+      GS.keys = {};
+      GS.mobile.left = false;
+      GS.mobile.right = false;
+      GS.mobile.jump = false;
+      GS.mobile.attack = false;
+    }
+
     const JOB_PRESETS = {
       Novice:{max_hp:100,max_mp:30,atk:10,def:5},
       Warrior:{max_hp:130,max_mp:20,atk:14,def:7},
@@ -561,13 +569,21 @@
       }catch(e){ GS.others=[]; }
     }
 
-    function showLoginUI(){ qs('loginOverlay').classList.remove('hidden'); GS.scene='login'; }
+    function showLoginUI(){ clearGameplayInputs(); qs('loginOverlay').classList.remove('hidden'); GS.scene='login'; }
     function hideLoginUI(){ qs('loginOverlay').classList.add('hidden'); }
-    function showCreateUI(){ qs('createOverlay').classList.remove('hidden'); GS.scene='create'; }
+    function showCreateUI(){ clearGameplayInputs(); qs('createOverlay').classList.remove('hidden'); GS.scene='create'; }
     function hideCreateUI(){ qs('createOverlay').classList.add('hidden'); }
-    function toggleInventoryUI(){ GS.inventoryOpen ? hideInventoryUI() : showInventoryUI(); }
-    function showInventoryUI(){ GS.inventoryOpen=true; GS.selectedEquipSlot = null; qs('inventoryOverlay').classList.remove('hidden'); renderInventoryUI(); }
-    function hideInventoryUI(){ GS.inventoryOpen=false; GS.selectedEquipSlot = null; qs('inventoryOverlay').classList.add('hidden'); }
+    function isTypingTarget(el){
+      if(!el) return false;
+      const tag = (el.tagName || '').toUpperCase();
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || !!el.isContentEditable;
+    }
+    function isFormInteractionMode(){
+      return isTypingTarget(document.activeElement) || GS.scene === 'login' || GS.scene === 'create';
+    }
+    function toggleInventoryUI(){ if(GS.scene !== 'play' || isFormInteractionMode()) return; GS.inventoryOpen ? hideInventoryUI() : showInventoryUI(); }
+    function showInventoryUI(){ if(GS.scene !== 'play') return; clearGameplayInputs(); GS.inventoryOpen=true; GS.selectedEquipSlot = null; qs('inventoryOverlay').classList.remove('hidden'); renderInventoryUI(); }
+    function hideInventoryUI(){ clearGameplayInputs(); GS.inventoryOpen=false; GS.selectedEquipSlot = null; qs('inventoryOverlay').classList.add('hidden'); }
 
     function renderInventoryUI(){
       const slots = qs('equipSlots');
@@ -959,6 +975,7 @@
     function gameLoop(ts){
       GS.ts = ts;
       CTX.clearRect(0,0,CVS.width,CVS.height);
+      if(isFormInteractionMode()) clearGameplayInputs();
       if(GS.scene === 'play' && currentMap){
         if(!GS.inventoryOpen){
           updatePlayer();
@@ -985,11 +1002,13 @@
     }
 
     window.addEventListener('keydown', e=>{
+      if(isTypingTarget(e.target) || isFormInteractionMode()) return;
       GS.keys[e.code] = true;
+      if(GS.scene !== 'play') return;
       if(e.code === 'KeyJ'){ e.preventDefault(); basicAttack(); }
       if(e.code === 'KeyI'){ e.preventDefault(); toggleInventoryUI(); }
     });
-    window.addEventListener('keyup', e=>{ GS.keys[e.code] = false; if(e.code==='Space') GS.mobile.jump=false; });
+    window.addEventListener('keyup', e=>{ if(isTypingTarget(e.target) || isFormInteractionMode()) return; GS.keys[e.code] = false; if(e.code==='Space') GS.mobile.jump=false; });
 
     qs('tabLogin').onclick = ()=>{ qs('tabLogin').classList.add('active'); qs('tabRegister').classList.remove('active'); qs('loginAction').textContent='ログイン'; qs('loginAction').onclick=doLogin; };
     qs('tabRegister').onclick = ()=>{ qs('tabRegister').classList.add('active'); qs('tabLogin').classList.remove('active'); qs('loginAction').textContent='新規登録'; qs('loginAction').onclick=doRegister; };
@@ -1030,6 +1049,9 @@
 
     window.addEventListener('beforeunload', ()=>{ savePlayerToLocal(); clearPresence(); });
     window.addEventListener('resize', resizeCanvas);
+    window.addEventListener('blur', clearGameplayInputs);
+    window.addEventListener('focusin', e=>{ if(isTypingTarget(e.target)) clearGameplayInputs(); });
+    document.addEventListener('visibilitychange', ()=>{ if(document.hidden) clearGameplayInputs(); });
 
     async function boot(){
       resizeCanvas();
